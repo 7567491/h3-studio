@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局微调,移动优先 */
+html, body { height: 100%; }
+body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+button, .btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+/* 滚动条细一点 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a4a; }
+
+/* 进度条动画 */
+.progress-bar { transition: width 0.4s ease-out; }
+
+/* ============================================ 控制行 chip 风格
+   五个控制按钮 (时长/参考图/库/扩写/还原) 共用一套视觉,只靠颜色区分状态:
+   - 默认: bg-bg-card + 白边 10%
+   - hover: bg-bg-hover + 白边 20%
+   - 选中/激活: bg-accent/10 + accent 边框 + accent 字
+   - 错误: bg-err/10 + err 边框 + err 字 (用 !important 覆盖)
+   ============================================ */
+@layer components {
+  .chip-base {
+    @apply inline-flex items-center gap-1.5
+           text-xs font-medium
+           px-3 py-1.5
+           rounded-lg
+           bg-bg-card text-gray-300
+           border border-white/10
+           hover:bg-bg-hover hover:border-white/20 hover:text-white
+           transition cursor-pointer
+           whitespace-nowrap select-none;
+    min-height: 28px;  /* 保证五元素严格同高 */
+  }
+  .chip-base:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}

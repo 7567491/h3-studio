@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 跟 h3-video.linode.fun 一致的暗色品牌色
+        // 暗色品牌色 — 参考通用 SaaS 调色板, clone 后可自由调整
         bg: { DEFAULT: '#0a0a0f', card: '#15151d', hover: '#1f1f2b' },
         accent: { DEFAULT: '#6366f1', glow: '#818cf8' },
         ok: '#10b981',
