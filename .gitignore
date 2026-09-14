@@ -1,0 +1,73 @@
+# H3 Studio — monorepo root .gitignore
+# Secrets & local state are NEVER committed.
+
+# === Secrets (per Claude.md, kept out of VCS) ===
+# Local backend config with real credentials
+backend/.env
+
+# Hermes agent global secrets (in case anyone clones with the wrong intent)
+.env
+.env.*
+!.env.example
+
+# === Backup files (兜底: 全仓任意层 *.bak-*) ===
+*.bak
+*.bak-*
+**/*.bak
+**/*.bak-*
+
+# === Backend (Python) ===
+# Virtualenv is already ignored via backend/.venv/.gitignore ("*"),
+# but cover the parent dir pattern just in case the layout changes.
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+
+# === Frontend (Node) ===
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.log
+frontend/.npm/
+frontend/.next/
+frontend/.cache/
+# Frontend env files (Vite reads .env / .env.local at build time)
+frontend/.env
+frontend/.env.*
+frontend/.env.local
+# But keep .env.example as a tracked template
+!frontend/.env.example
+
+# === Editor / OS ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === Build artifacts ===
+*.tgz
+*.tar.gz
+*.zip
+*.7z
+
+# === Local-only logs ===
+*.log
+*.pid
+nohup.out
+
+# === H3 Studio runtime state ===
+# GPU history file written by backend/gpu_history.py
+/backend/h3-gpu-history.jsonl
+/backend/h3-gpu-history.jsonl.*
+
+# Submitted prompt artifacts (git-ignored by default; see .env overrides)
+/uploads/
+/backend/uploads/

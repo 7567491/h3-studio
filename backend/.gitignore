@@ -1,0 +1,35 @@
+# H3 Studio Backend — Python .gitignore
+# NOTE: .venv/ is already ignored by backend/.venv/.gitignore ("*").
+
+# === Secrets ===
+.env
+.env.*
+!.env.example
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# === Backup files (auto-created by editors / rollback scripts) ===
+*.bak
+*.bak-*
+*.swp
+*.swo
+
+# === H3 runtime state ===
+h3-gpu-history.jsonl
+uploads/
+
+# === Local logs ===
+*.log

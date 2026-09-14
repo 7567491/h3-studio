@@ -1,0 +1,20 @@
+[Unit]
+Description=H3 Studio API (FastAPI) - serves /api and /ws
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/h3-studio/backend
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+# Secrets are loaded from backend/.env by app/config.py at startup.
+# DO NOT put secrets (COMFYUI_PASSWORD, H3_ACCESS_PASS, LLM_API_KEY, RTX_SSH_PASS)
+# as Environment= lines here — they would be visible to anyone who can read this file.
+ExecStart=/srv/h3-studio/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 18893 --log-level info
+Restart=on-failure
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target

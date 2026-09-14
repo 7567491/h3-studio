@@ -1,0 +1,30 @@
+H3 Studio — Proprietary License
+Copyright (c) 2026 Jack Zhang. All rights reserved.
+
+This repository and all its contents are proprietary and confidential.
+Unauthorized copying, modification, distribution, public display, or use of
+this software, via any medium, is strictly prohibited without prior written
+permission from the copyright holder.
+
+Permitted uses:
+  - Internal cloning for the author's own development and deployment
+  - Internal use by the author's team members under NDA
+
+Prohibited without written authorization:
+  - Public forks or mirrors
+  - Redistribution (in source or binary form)
+  - Commercial use
+  - Derivative works for external publication
+
+The H3 model files referenced in this codebase (minimax_h3_*.safetensors,
+qwen3vl_32b_minimax_h3_*.safetensors) are the property of MiniMax Inc. and
+require separate authorization from MiniMax for use. This license does NOT
+grant any rights to those model files.
+
+For licensing inquiries, contact the author via the GitHub profile listed
+on the repository's main page.
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, OF
