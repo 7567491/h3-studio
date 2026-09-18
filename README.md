@@ -261,6 +261,32 @@ h3-video.linode.fun (子域,独立后端 :18891)
 - **nginx `/media/` 别名不要加 `types{}` default_type**: 会把 `.cover.jpg` 缩略图强制成 `video/mp4`, 飞书/聊天工具读不了
 - **前端 `base: './'`**: 用相对路径而非绝对 `/`, 方便部署到任意子路径
 
+## Patch SOP (重要: 避免 "patch 在磁盘但没 reload")
+
+**任何对后端 `app/*.py` 或前端 `src/**` 的修改, 都必须按下列流程提交**, 缺一不可:
+
+```bash
+# 1. 编辑代码
+cd /srv/h3-studio
+# 改 backend/app/*.py 或 frontend/src/**.ts(x)
+
+# 2. 后端改完 → 立即 reload (同一动作!)
+cd /srv/h3-studio/backend
+.venv/bin/python -c "import sys; sys.path.insert(0, '.'); from app.main import app; print('imported OK')"  # 语法检查
+sudo systemctl restart h3-studio-api
+sleep 2
+
+# 3. 前端改完 → build + nginx 自动 serve (build 完即生效)
+cd /srv/h3-studio/frontend
+npm run build  # 产物在 dist/, nginx serve
+
+# 4. 验 banner 出现 = reload 成功
+journalctl -u h3-studio-api --no-pager -n 20 | grep "\[BUILD\]"
+# 应看到: [BUILD] h3-studio-api pid=<新 PID> git=<commit> patches=...
+```
+
+**RCA 案例 (2026-09-17)**: patch 了 `submit_manager.py` 的 timeout 兜底逻辑, 但忘记 reload, 结果一条 5s 任务撞上 600s timeout 时, 旧代码直接 error, 视频留在 RTX output 没 stage — 手动 scp + sudo stage 才救回来。从那以后启动 banner 强制打印 `[BUILD]` 行, 运维一眼能看出当前进程跑的是哪个 commit。
+
 ## 配套 skill
 
 `~/.hermes/skills/devops/comfyui-webui/` 里有完整的 ComfyUI 操作流程:
