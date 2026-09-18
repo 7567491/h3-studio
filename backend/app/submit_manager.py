@@ -317,7 +317,50 @@ class SubmitManager:
 
                 await asyncio.sleep(POLL_INTERVAL_S)
 
-            # timeout
+            # === timeout 兜底 (2026-09-17 Jack 反馈) ===
+            # 之前: timeout 直接退出, 任务实际成功也不 stage, 视频留在 RTX output 永远丢失
+            # 现在: timeout 前再查一次 history, 如果 success 就 stage + 标 done
+            try:
+                async with ComfyUIClient() as c:
+                    hist_retry = await c.get_history(max_items=50)
+                done_retry = None
+                for pid_k, entry in (hist_retry or {}).items():
+                    if pid_k == sub.prompt_id and entry:
+                        done_retry = entry
+                        break
+                if done_retry is not None:
+                    status_str = (done_retry.get("status") or {}).get("status_str")
+                    if status_str == "success":
+                        log.info(f"polling timeout but history shows success — late stage for {sub.submission_id}")
+                        # 复用 done_info 处理逻辑: 触发落盘 + emit done
+                        outputs = done_retry.get("outputs") or {}
+                        for node_id, out in outputs.items():
+                            for v in (out.get("videos") or []) + (out.get("images") or []):
+                                fname = v.get("filename", "")
+                                if not fname:
+                                    continue
+                                sub.output_files.append(v)
+                                if fname.endswith(".mp4"):
+                                    asyncio.create_task(self._fetch_and_stage(
+                                        fname, v.get("subfolder", ""), sub))
+                        sub.status = "done"
+                        sub.progress = 1.0
+                        sub.progress_step = 1
+                        sub.progress_max = 1
+                        sub.finished_at = time.time()
+                        files_with_path = []
+                        for f in sub.output_files:
+                            fname = f.get("filename", "")
+                            if fname.endswith((".mp4", ".png", ".jpg", ".webp")):
+                                date_dir = H3_UPLOADS_DIR / time.strftime("%Y-%m-%d")
+                                files_with_path.append({**f, "web_path": f"/media/{date_dir.name}/{fname}"})
+                            else:
+                                files_with_path.append(f)
+                        await self._emit(sub, {"type": "done", "files": files_with_path})
+                        return
+            except Exception as e:
+                log.warning(f"late-retry fetch_and_stage failed: {e}")
+
             sub.status = "error"
             sub.error = f"轮询超时 ({TIMEOUT_S}s), ComfyUI 未完成"
             sub.finished_at = time.time()
@@ -484,14 +527,19 @@ class SubmitManager:
         放到独立线程跑,即使 h3-viewer 重扫很慢也不影响 h3-studio-api 主流程。
         h3-viewer 的 /api/refresh 是 Flask 同步,扫 200+ 视频 + 300+ BeatAPI 解析
         可能需要 10-30 秒。
+
+        URL 从 config.H3_VIEWER_REFRESH_URL 读 (.env 覆盖), 留空则禁用联动。
         """
         import urllib.request
+        from .config import H3_VIEWER_REFRESH_URL
+        if not H3_VIEWER_REFRESH_URL:
+            return
         try:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
                 None,
                 lambda: urllib.request.urlopen(
-                    "http://127.0.0.1:18891/api/refresh",
+                    H3_VIEWER_REFRESH_URL,
                     timeout=60,
                 ).read().decode(),
             )

@@ -60,6 +60,20 @@ async def on_startup():
     n = await recover_orphans()
     log.info(f"startup: orphan recovery done, {n} recovered")
 
+    # === Patch banner (2026-09-17 SOP) ===
+    # 运维一眼能看出当前进程跑的是哪版代码,
+    # 避免"patch 在磁盘但没 reload"这种隐式陷阱。
+    import subprocess as _sp
+    try:
+        git_short = _sp.run(
+            ["git", "-C", "/srv/h3-studio", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=3,
+        ).stdout.strip()
+    except Exception:
+        git_short = "no-git"
+    log.info(f"[BUILD] h3-studio-api pid={__import__('os').getpid()} git={git_short} patches=submit_manager:timeout-late-retry")
+    log.info(f"[BUILD] startup complete, listening on http://127.0.0.1:18893")
+
     # 启动 GPU 显存历史采样守护线程 (load-on-start + 后台每 10s 采样)
     from .gpu_history import gpu_history
     gpu_history.start()
@@ -184,7 +198,9 @@ async def comfyui_status():
             "raw": stats,
         }
     except ComfyUIError as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=503)
+        # ComfyUI 不可用时不返 503 — 200 + ok:false 让前端能正常渲染
+        # 其它独立数据源 (GPU 真实状态 / 历史曲线) 仍能工作,见 QueueTab
+        return {"ok": False, "error": str(e), "unavailable": True}
 
 
 @app.websocket("/ws/gpu-events")
@@ -303,15 +319,31 @@ async def get_queue():
         log.warning(f"history 校准失败, fallback {sec_per_frame:.3f}s/frame: {e}")
 
     # === 2) 拿队列 + 算每个任务的 est_total_sec ===
+    # ComfyUI 不可用时返 200 + ok:false + 空数组,前端能正常消费 (其它数据源仍工作)
+    now = time.time()
     try:
         async with ComfyUIClient() as c:
             q = await c.get_queue()
         running = q.get("queue_running", []) or []
         pending = q.get("queue_pending", []) or []
     except ComfyUIError as e:
-        raise HTTPException(503, f"ComfyUI 不可用: {e}")
+        return {
+            "ok": False,
+            "unavailable": True,
+            "error": f"ComfyUI 不可用: {e}",
+            "running_count": 0,
+            "pending_count": 0,
+            "running": [],
+            "pending": [],
+            "calibration_samples": 0,
+            "sec_per_frame": sec_per_frame,
+            "eta_total_sec": 0,
+            "eta_running_sec": 0,
+            "eta_self_sec": None,
+            "eta_self_position": None,
+            "ts": now,
+        }
 
-    now = time.time()
     sub_lookup = SUBMIT_MANAGER.snapshot_for_queue()  # {prompt_id: sub_dict}
 
     def enrich(task_item, *, is_running: bool):
@@ -376,6 +408,7 @@ async def get_queue():
             break
 
     return {
+        "ok": True,
         "running_count": len(running),
         "pending_count": len(pending),
         "running": running_enriched,

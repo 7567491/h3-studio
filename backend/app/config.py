@@ -107,6 +107,14 @@ RTX_VLLM_API_HOST = os.environ.get("RTX_VLLM_API_HOST", "http://127.0.0.1:8000")
 # 单次 SSH 超时 (前端 5s 刷新, 不能更长)
 RTX_SSH_TIMEOUT_S = int(os.environ.get("RTX_SSH_TIMEOUT_S", "5"))
 
+# === Sibling viewer 联动 ===
+# 视频 stage 后, 后台异步 POST 这个 URL 触发 h3-viewer 重扫盘
+# (Flask /api/refresh, 10-30s 同步扫盘, 不能阻塞主流程所以走 run_in_executor)
+# 留空 = 禁用联动 (clone 此仓但没跑 h3-viewer 的部署不会刷 warning)
+H3_VIEWER_REFRESH_URL = os.environ.get(
+    "H3_VIEWER_REFRESH_URL", "http://127.0.0.1:18891/api/refresh"
+)
+
 # === CORS ===
 # ⚠️ 部署时必须修改 — 默认留空(任何人 clone 都需要在 backend/.env 设 CORS_ORIGINS)
 # 前端是同源部署, 不需要 CORS (nginx 反代下 /api/ 和 /ws/ 都通过同源访问)
