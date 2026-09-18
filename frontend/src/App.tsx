@@ -183,24 +183,37 @@ export default function App() {
 }
 
 // ========================================== ComfyUI 健康 badge
+// 2026-09-15 Jack 反馈: 顶部 ComfyHealthBadge 进度条/数字必须一直显示,
+// 不能因为 ComfyUI 挂了就只剩 "离线" 文字。
+//
+// 改造: VRAM 数据从 /api/comfyui/status 改为 /api/gpu/processes (走 SSH nvidia-smi),
+//       这条路完全独立于 ComfyUI,RTX 活着就能拿到数据。
+// ComfyUI 健康度(绿色 = 可用 / 灰 = 不可用)独立显示,只影响圆点颜色。
 function ComfyHealthBadge() {
-  const [status, setStatus] = useState<'checking' | 'ok' | 'err'>('checking')
-  const [vramFree, setVramFree] = useState<number | null>(null)
+  const [comfyOk, setComfyOk] = useState<boolean | null>(null)  // null=检测中
+  const [vramUsed, setVramUsed] = useState<number | null>(null)
   const [vramTotal, setVramTotal] = useState<number | null>(null)
   const [gpuName, setGpuName] = useState<string | null>(null)
 
   const check = useCallback(async () => {
+    // 1) VRAM 真实数据 — 走 SSH nvidia-smi (不受 ComfyUI 影响)
+    try {
+      const r = await fetch('/api/gpu/processes')
+      const d = await r.json()
+      if (d?.gpu) {
+        setVramUsed(d.gpu.memory_used_gb ?? null)
+        setVramTotal(d.gpu.memory_total_gb ?? null)
+        setGpuName(d.gpu.name ?? null)
+      }
+    } catch { /* silent — 保持上次数据 */ }
+
+    // 2) ComfyUI 健康度 — 单独探测
     try {
       const r = await fetch('/api/comfyui/status')
       const d = await r.json()
-      if (d.ok) {
-        setStatus('ok')
-        setVramFree(d.vram_free_gb ?? null)
-        setVramTotal(d.vram_total_gb ?? null)
-        setGpuName(d.gpu_name ?? null)
-      } else setStatus('err')
+      setComfyOk(d?.ok === true)
     } catch {
-      setStatus('err')
+      setComfyOk(false)
     }
   }, [])
 
@@ -210,50 +223,54 @@ function ComfyHealthBadge() {
     return () => clearInterval(t)
   }, [check])
 
-  const color = status === 'ok' ? 'bg-ok' : status === 'err' ? 'bg-err animate-pulse' : 'bg-gray-500'
-  // 简化 GPU 名字: "RTX PRO 6000 Blackwell" 简化到 "RTX PRO 6000"
+  // 简化 GPU 名字: "NVIDIA RTX PRO 6000 Blackwell..." → "RTX PRO 6000..."
   const shortName = gpuName?.includes('RTX') ? gpuName.split('NVIDIA ')[1]?.split(' :')[0] || gpuName : gpuName
-  const showDetail = vramFree !== null && vramTotal !== null
-  const freeTenths = vramFree !== null ? vramFree.toFixed(0) : null
-  const totalTenths = vramTotal !== null ? vramTotal.toFixed(0) : null
 
-  // 颜色编码: < 70% 绿, 70-90% 黄, > 90% 红
-  const pct = vramTotal && vramFree !== null
-    ? ((vramTotal - vramFree) / vramTotal) * 100
-    : null
+  // 进度条数据: 独立于 ComfyUI,只要 RTX 活着就一直有
+  const showBar = vramUsed !== null && vramTotal !== null
+  const pct = vramUsed !== null && vramTotal ? (vramUsed / vramTotal) * 100 : null
+  // < 70% 绿, 70-90% 黄, > 90% 红
   const colorBar = pct === null ? 'bg-gray-500'
     : pct < 70 ? 'bg-ok'
     : pct < 90 ? 'bg-warn'
     : 'bg-err animate-pulse'
-  const dotColor = status === 'ok' && pct !== null && pct < 90 ? 'bg-ok'
-    : status === 'ok' ? 'bg-warn animate-pulse'
-    : status === 'err' ? 'bg-err animate-pulse'
-    : 'bg-gray-500'
+
+  // 圆点: ComfyUI 可用 + 显存健康 → 绿; ComfyUI 不可用 → 灰 (但条还显示); 显存黄/红 → 黄/红
+  const dotColor = comfyOk === null ? 'bg-gray-500 animate-pulse'
+    : comfyOk && pct !== null && pct < 90 ? 'bg-ok'
+    : comfyOk ? 'bg-warn animate-pulse'
+    : 'bg-gray-600'  // ComfyUI 不可用 — 圆点变灰但条不消失
 
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className={`w-2 h-2 rounded-full ${dotColor}`} />
-      {status === 'ok' && showDetail && pct !== null ? (
+      {showBar ? (
         <>
-          <span className="text-gray-500 hidden md:inline">
+          <span className="text-gray-500 hidden md:inline" title={gpuName ?? ''}>
             {shortName?.split(' ').slice(0, 3).join(' ')}
           </span>
-          {/* 进度条 (40px 宽) */}
-          <div className="hidden sm:flex items-center gap-1.5">
+          {/* 进度条 (40px 宽) — 永远显示 (Jack 2026-09-15) */}
+          <div className="flex items-center gap-1.5">
             <div className="w-10 h-1.5 bg-bg rounded-full overflow-hidden">
               <div
                 className={`h-full ${colorBar} transition-all`}
-                style={{ width: `${Math.min(pct, 100)}%` }}
+                style={{ width: `${Math.min(pct ?? 0, 100)}%` }}
               />
             </div>
-            <span className="font-mono text-gray-400">{Math.round(pct)}%</span>
+            <span className="font-mono text-gray-400 tabular-nums">{Math.round(pct ?? 0)}%</span>
           </div>
           {/* 详细数字 */}
-          <span className="font-mono text-gray-500 hidden lg:inline">
-            {freeTenths}G / {totalTenths}G 空闲
+          <span className="font-mono text-gray-500 hidden lg:inline tabular-nums">
+            {vramUsed!.toFixed(0)}G / {vramTotal!.toFixed(0)}G 已用
           </span>
+          {/* ComfyUI 状态 — 不可用时显文字,可用时静默 (避免噪音) */}
+          {comfyOk === false && (
+            <span className="text-[10px] text-gray-500 hidden sm:inline" title="ComfyUI 不可用, 但 GPU/进程数据走 SSH 仍可用">
+              · ComfyUI 离线
+            </span>
+          )}
         </>
-      ) : status === 'err' ? (
+      ) : comfyOk === false ? (
         <span className="text-err">离线</span>
       ) : (
         <span className="text-gray-500">检测中…</span>

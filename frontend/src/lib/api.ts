@@ -18,6 +18,9 @@ export interface QueueTask {
 }
 
 export interface QueueSnapshot {
+  ok?: boolean                  // 后端在 /api/queue 响应里塞的可用性标志 (2026-09-15 加)
+  unavailable?: boolean
+  error?: string
   running_count: number
   pending_count: number
   running: QueueTask[]

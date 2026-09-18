@@ -28,24 +28,60 @@ interface GpuHistoryResp {
 export default function QueueTab() {
   const [q, setQ] = useState<QueueSnapshot | null>(null)
   const [status, setStatus] = useState<GpuStatus | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const [comfyErr, setComfyErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  // 独立 VRAM total 来源 (GpuHistoryChart 渲染条件不再依赖 comfyStatus)
+  // 优先 status.vram_total_gb (ComfyUI 可用时精确), 否则用 gpu_processes 兜底
+  const [gpuTotal, setGpuTotal] = useState<number | null>(null)
 
   // 跨 Tab 共享的活跃 submission — GenerateTab 提交后这里也立即显示
   const { sub: activeSub, promptText: activePromptText, setActiveSub } = useActiveSub()
 
+  // === 数据源独立性 (2026-09-15 Jack 反馈) ===
+  // ComfyUI 不可用时, 不能整个 tab 都不渲染 — 其它独立数据源 (GPU 真实状态 / 显存历史)
+  // 仍然可用。后端已经改成 200 + ok:false (而不是 503), 这里只需按字段分别处理:
+  //   - api.queue() 成功 → 用 q,ComfyUI 正常
+  //   - api.queue() 返 ok:false → 用 q (空数组), comfyErr 显顶部 banner
+  //   - api.comfyStatus() 失败 → status 保持 null, banner 里顺带提一句
+  // GPU 真实状态 (GpuRealStatus) 走独立 /api/gpu/processes, 不受 ComfyUI 影响
   const refresh = useCallback(async () => {
-    try {
-      const [qd, sd] = await Promise.all([api.queue(), api.comfyStatus()])
-      setQ(qd)
-      setStatus(sd)
-      setErr(null)
-    } catch (e: any) {
-      setErr(e.message)
-    } finally {
-      setLoading(false)
+    const [qr, sr] = await Promise.all([
+      api.queue().catch((e: Error) => ({ ok: false, error: e.message, _err: true } as any)),
+      api.comfyStatus().catch((e: Error) => ({ ok: false, error: e.message, _err: true } as any)),
+    ])
+    // queue: 后端 200 时 ok:true 才有数据; 503 改 200 + ok:false 后,这里走 ok 分支
+    if (qr.ok) {
+      setQ(qr)
+      setComfyErr(null)
+    } else {
+      // queue 失败 → 用空快照,不阻断其它渲染
+      setQ({
+        running_count: 0, pending_count: 0, running: [], pending: [],
+        sec_per_frame: 0.5, calibration_samples: 0,
+        eta_total_sec: 0, eta_running_sec: 0,
+        eta_self_sec: null, eta_self_position: null, ts: Date.now() / 1000,
+      } as any)
+      setComfyErr(qr.error || qr._err || 'queue fetch failed')
     }
-  }, [])
+    // status: 走 GpuRealStatus 那个独立 /api/gpu/processes,这里只用 status 当 vram_total 来源
+    if (sr.ok) {
+      setStatus(sr)
+    } else if (!status) {
+      setStatus({ ok: false } as any)
+    }
+    setLoading(false)
+
+    // 兜底: 从 gpu_processes 拿 vram_total, 1h 柱状图永远能渲染
+    try {
+      const gp = await api.gpuProcesses()
+      if (gp?.gpu?.memory_total_gb) {
+        setGpuTotal(gp.gpu.memory_total_gb)
+      }
+    } catch { /* silent */ }
+  }, [status])
+
+  // 1h 柱状图需要的 total: 优先 comfyStatus (精确), 否则 gpu_processes 兜底
+  const vramTotalForChart = status?.vram_total_gb ?? gpuTotal ?? 0
 
   useEffect(() => {
     refresh()
@@ -139,11 +175,21 @@ export default function QueueTab() {
         <p className="text-xs text-gray-600 mt-0.5">GPU Status · Live queue, refreshes every 5s</p>
       </div>
 
-      {err && (
-        <div className="bg-err/10 border border-err/30 rounded-2xl p-4 text-err text-sm">
-          ⚠ ComfyUI 不可用: {err}
-        </div>
-      )}
+      {comfyErr && (() => {
+        // 剥掉 raw 502 HTML / 噪声, 只显简短原因 (Jack 2026-09-15 反馈)
+        let shortErr = comfyErr
+        const m = comfyErr.match(/(GET\s+\/\S+\s+→\s+\d+)/)
+        if (m) shortErr = m[1]
+        else if (comfyErr.length > 120) shortErr = comfyErr.slice(0, 120) + '…'
+        return (
+          <div className="bg-bg-card border border-white/10 rounded-2xl p-3 text-gray-400 text-xs flex items-center gap-2">
+            <span>ℹ️ ComfyUI 未启用</span>
+            {shortErr && shortErr !== 'ComfyUI 不可用' && (
+              <span className="font-mono text-gray-500">· {shortErr}</span>
+            )}
+          </div>
+        )
+      })()}
 
       {loading && !q && (
         <div className="text-center text-gray-500 py-12">加载中…</div>
@@ -154,13 +200,9 @@ export default function QueueTab() {
           {/* GPU 真实状态 (nvidia-smi via SSH, 含 vLLM 等所有进程) */}
           <GpuRealStatus />
 
-          {/* GPU 显存 1h 历史曲线 (GpuRealStatus L155 已显示实时 82.1/95.59 GB) */}
-          {status?.ok && status?.vram_total_gb != null && (
-            <GpuHistoryChart
-              totalGb={status.vram_total_gb}
-              key={`hist-${status.vram_total_gb}`}
-            />
-          )}
+          {/* GPU 显存 1h 历史曲线 (走 /api/gpu/history, 独立于 ComfyUI)
+              2026-09-15 Jack 反馈: 条件不再卡 comfyStatus.ok, 改用 gpu_processes 的 vram_total */}
+          <GpuHistoryChart totalGb={vramTotalForChart} />
 
           {/* 队列 Dashboard: 2 列 + 可选第 3 列 (我的任务)
               - 正在生成 N + 当前任务剩余时间
