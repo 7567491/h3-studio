@@ -254,7 +254,7 @@ class SubmitManager:
                                     "type": "node_output", "node": node_id,
                                     "files": sub.output_files,
                                 })
-                                # 触发落盘(走 sudo 桥接 → /mnt/mmm/uploads)
+                                # 触发落盘 (走 sudo 桥接 → H3_UPLOADS_DIR, 见 /etc/sudoers.d/claude)
                                 if fname.endswith(".mp4"):
                                     asyncio.create_task(self._fetch_and_stage(
                                         fname, v.get("subfolder", ""), sub))

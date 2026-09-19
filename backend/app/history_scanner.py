@@ -50,7 +50,10 @@ def _describe_mp4(mp4, date: str, st=None) -> dict | None:
 
 
 def scan_local_uploads(limit: int = 50, date: Optional[str] = None) -> list[dict]:
-    """扫 /mnt/mmm/video/art/uploads/<日期>/*.mp4。
+    """扫 H3_UPLOADS_DIR/<日期>/*.mp4。
+
+    H3_UPLOADS_DIR 从 backend/.env 读 (默认 ./uploads)。
+    由 nginx /media/ location 反代给浏览器访问。
 
     Args:
         limit: 最多返回多少个

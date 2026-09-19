@@ -253,5 +253,5 @@ export const api = {
     ),
 }
 
-// 媒体 URL helper - 走当前域名,/media 由 nginx 反代到 /mnt/mmm
+// 媒体 URL helper - 走当前域名, /media 由 nginx 反代到 H3_UPLOADS_DIR
 export const mediaUrl = (webPath: string) => webPath
