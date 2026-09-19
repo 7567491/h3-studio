@@ -1,5 +1,10 @@
 # H3 Studio
 
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+[![CI](https://github.com/7567491/h3-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/7567491/h3-studio/actions/workflows/ci.yml)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![Node 20](https://img.shields.io/badge/node-20-green.svg)](https://nodejs.org/)
+
 MiniMax H3 视频生成 Web Studio — 后端 FastAPI + 前端 React/Vite，
 通过 ComfyUI (RTX PRO 6000) 生成 H3 reference-to-video 内容。
 

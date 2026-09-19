@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-import-smoke:
+    name: Backend import smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Backend import smoke (no ComfyUI / .env required)
+        run: |
+          cd backend
+          # 我们只 import 一个最小 subset, 避免装整个 venv
+          # (backend 测试触达 ComfyUI / GPU 等外部资源, 不在 CI 跑)
+          pip install --quiet python-dotenv pydantic
+          python -c "
+          import sys
+          # 把 app/ 里纯 helper 模块单独 import, 跳过触达网络的 main.py
+          from app.config import H3_DEFAULTS
+          from app.prompt_library import list_categories
+          print('config + prompt_library import OK, prompts loaded OK')
+          print('default duration_s:', H3_DEFAULTS.get('default_seed'))
+          "
+
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps
+        run: npm ci || npm install
+
+      - name: TypeScript type check
+        run: npx tsc -p tsconfig.json --noEmit
+
+      - name: Vite production build
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
