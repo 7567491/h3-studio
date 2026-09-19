@@ -1,31 +1,26 @@
-# H3 Studio
+# H3 Studio · H3 视频生成 Web Studio
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/7567491/h3-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/7567491/h3-studio/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![Node 20](https://img.shields.io/badge/node-20-green.svg)](https://nodejs.org/)
 
-MiniMax H3 视频生成 Web Studio — 后端 FastAPI + 前端 React/Vite，
-通过 ComfyUI (RTX PRO 6000) 生成 H3 reference-to-video 内容。
+> **English** · **中文**
 
-> **⚠️ 部署前必读**
->
-> 本仓库是通用模板。clone 后必须修改:
-> 1. `backend/.env` — 填入你自己的 `COMFYUI_BASE_URL` / `COMFYUI_USERNAME` / `COMFYUI_PASSWORD` / `H3_ACCESS_PASS`
-> 2. `CORS_ORIGINS` — 设为你自己的前端域名(逗号分隔,不含路径)
-> 3. (可选) `LLM_*` — 任意 LLM 后端 (OpenAI / Anthropic / Ollama / 自定义),详见 README "LLM 后端" 章节
-> 4. (可选) `RTX_SSH_HOST`/`RTX_SSH_USER` (GPU 状态采集)
-> 5. 不要复用默认 demo 凭据,所有环境变量在 `backend/.env.example` 留空,启动前必须填齐
->
-> 仓库源码中**不包含**任何生产凭据、内网 IP、demo 服务器域名 — 所有敏感值都从 `backend/.env` 读(.env 被 git 忽略)。
+---
 
-## 项目结构
+## 中文 (zh-CN)
+
+通过 ComfyUI (RTX PRO 6000) 生成 MiniMax H3 reference-to-video 内容的 Web 控制台。
+后端 FastAPI + 前端 React/Vite,可作为独立项目部署或与现有 ComfyUI 实例对接。
+
+### 项目结构 / Project layout
 
 ```
 h3-studio/
 ├── backend/                # FastAPI 后端 (Python 3.11)
-│   ├── app/                # 业务代码
-│   │   ├── main.py         # FastAPI 入口 + 路由
+│   ├── app/
+│   │   ├── main.py         # FastAPI 入口 + 26 routes
 │   │   ├── config.py       # 配置 (从 .env 加载)
 │   │   ├── comfyui_client.py
 │   │   ├── submit_manager.py
@@ -38,279 +33,353 @@ h3-studio/
 │   │   └── gpu_history.py
 │   ├── requirements.txt
 │   ├── .env.example        # 配置模板 (可推 GitHub)
-│   └── .env                # 真实凭据 (git-ignored,自己 cp 一份)
+│   └── .env                # 真实凭据 (git-ignored)
 │
-├── frontend/               # React 18 + Vite + TS + Tailwind 前端
+├── frontend/               # React 18 + Vite + TS + Tailwind
 │   ├── src/
 │   │   ├── App.tsx
 │   │   ├── main.tsx
 │   │   ├── components/     # PassGate, ProgressCard
 │   │   ├── tabs/           # GenerateTab, HistoryTab, QueueTab
 │   │   └── lib/            # api.ts, ws.ts, activeSub.ts
-│   ├── vite.config.ts      # dev proxy /api & /ws → 后端 18893
+│   ├── vite.config.ts
 │   ├── package.json
 │   └── tailwind.config.js
 │
-└── .gitignore              # monorepo 根级遮蔽
+├── .github/workflows/ci.yml  # 后端 import + 前端 tsc + build
+├── .gitignore
+├── LICENSE                  # Apache-2.0
+└── README.md
 ```
 
-## 前置条件
+### 前置条件
 
-- **Python 3.11** (后端)
-- **Node.js 18+** (前端)
-- 一个可访问的 **ComfyUI 实例**，跑着 MiniMax H3 模型套件:
+- **Python 3.11** (后端) / **Node.js 18+** (前端)
+- 一个可访问的 **ComfyUI 实例**,跑着 MiniMax H3 模型套件:
   - `minimax_h3_fl2va_pruned_int8_convrot.safetensors` (UNET)
   - `minimax_h3_video_vae_fp16.safetensors` (视频 VAE)
   - `minimax_h3_audio_vae_fp32.safetensors` (音频 VAE)
   - `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` (CLIP)
   - `minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors` (Turbo LoRA)
-- **反向代**: nginx 把 `/api/` 和 `/ws/` 转到 `127.0.0.1:18893`
-  (生产: 见 `/etc/nginx/sites-enabled/h3.linode.fun.conf`)
 
-## 安装与启动
+> **模型文件是 MiniMax Inc. 财产** — 见 [License](#许可证--license) 章节。
 
-### 1. 克隆并准备配置
+### 安装与启动 / Installation
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/7567491/h3-studio
 cd h3-studio
 
-# 后端: 复制 .env 模板并填真实凭据
+# 后端
 cp backend/.env.example backend/.env
 $EDITOR backend/.env   # 必填: COMFYUI_BASE_URL / _USERNAME / _PASSWORD / H3_ACCESS_PASS
 chmod 600 backend/.env
-```
 
-### 2. 启动后端
-
-```bash
 cd backend
 python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 18893
-```
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 18893 --log-level info
 
-健康检查：<http://127.0.0.1:18893/api/health> 应返回 `{"ok":true}`。
-ComfyUI 连接检查：<http://127.0.0.1:18893/api/comfyui/status> 应返回 GPU 信息。
-
-### 3. 启动前端 (开发模式)
-
-另开一个终端：
-
-```bash
-cd frontend
+# 前端 (另开终端)
+cd ../frontend
 npm install
-npm run dev
-# → http://localhost:4173
-# Vite dev proxy 自动把 /api 和 /ws 转到 127.0.0.1:18893
+npm run dev   # http://localhost:4173
 ```
 
-首次访问会弹 **PassGate**——输入 `backend/.env` 里 `H3_ACCESS_PASS` 的值。
+健康检查: <http://127.0.0.1:18893/api/health> 应返回 `{"ok":true}`。
+ComfyUI 连接检查: <http://127.0.0.1:18893/api/comfyui/status> 应返回 GPU 信息。
 
-### 5. 生产构建 (前端静态站)
+### 视频存储 (解耦) / Video storage (decoupled)
 
-```bash
-cd frontend
-npm run build
-# 产物在 frontend/dist/
+生成视频落到 `H3_UPLOADS_DIR`(可在 `.env` 改,默认 `./uploads`)。
+
+**前端访问**:通过 nginx `/media/` location alias 到 `H3_UPLOADS_DIR`。**example nginx vhost**:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name your-domain.example;
+
+    root /path/to/h3-studio/frontend/dist;
+    index index.html;
+
+    # 视频直读 (历史页 HistoryTab 用)
+    location /media/ {
+        alias /path/to/H3_UPLOADS_DIR/;   # ← 替换成你自己的路径
+        add_header Cache-Control "public, max-age=86400";
+    }
+
+    # API / WS 反代
+    location /api/ {
+        proxy_pass http://127.0.0.1:18893;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 600s;
+    }
+
+    location /ws/ {
+        proxy_pass http://127.0.0.1:18893;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
 ```
 
-把 Nginx  `根 ` 指向 `frontend/dist/`，并保留 `/api/`、`/ws/` 反代到后端。
-示例见 `nginx-ai-gen-vhost.conf` (位于 `comfyui-webui` skill 内)。
+**支持任意存储后端**:
+- 本地目录 (默认)
+- S3FS 挂载 (例 `H3_UPLOADS_DIR=/mnt/s3fs/h3-uploads`)
+- NFS / GlusterFS / CephFS
+- MinIO bucket (用 rclone mount)
 
-## 配置 (backend/.env)
+只需保证:
+1. `hermes` 用户(或后端运行用户)对路径有读权限
+2. nginx worker 用户对路径有读权限
+3. 落盘脚本 (`/usr/local/bin/stage_h3_video.sh`) 对路径有写权限
+
+### 配置 (`backend/.env`)
 
 | Key | 说明 | 示例 |
 |---|---|---|
 | `COMFYUI_BASE_URL` | ComfyUI 服务地址 | `https://your-comfyui-host:8448` |
 | `COMFYUI_USERNAME` | ComfyUI Basic Auth 用户名 | — |
 | `COMFYUI_PASSWORD` | ComfyUI Basic Auth 密码 | — |
-| `H3_ACCESS_PASS` | 前端 PassGate 口令 (明文，后端自动算 SHA256) | `***` |
-| `H3_ALLOWED_SUBMITTERS` | 允许提交的 user_id 逗号分隔 | `jack` |
-| `H3_RATE_LIMIT` | 每 IP 提交间隔（秒）| `300` |
-| `PROMPT_LIBRARY_DIR` | prompt 库根目录（默认 `./prompts`）| `/path/to/prompts` |
-| `H3_UPLOADS_DIR` | 视频上传目录 (nginx `/media/` 别名) | `/mnt/mmm/video/art/uploads` |
-| `SERVICE_HOST` | 后端绑定地址 | `127.0.0.1` |
-| `SERVICE_PORT` | 后端端口 | `18893` |
-| `LLM_PROVIDER` | LLM 协议: `openai` / `anthropic` / `custom` | `openai` |
-| `LLM_BASE_URL` | LLM API base URL | `https://api.openai.com/v1` |
-| `LLM_API_KEY` | LLM 鉴权 key | `sk-...` |
-| `LLM_TEXT_MODEL` | 文本扩写模型 | `gpt-4o` / `claude-3-5-sonnet-latest` |
-| `LLM_VISION_MODEL` | Vision 模型 (留空 = 禁用参考图描述) | `gpt-4o` / `llava:latest` |
-| `RTX_SSH_HOST` | 远端 RTX 服务器 SSH host | `gpu.example.com` |
-| `RTX_SSH_USER` | RTX SSH 用户名 | `gpu` |
-| `RTX_SSH_PASS` | RTX SSH 密码 (推荐改用 key) | — |
-| `RTX_SSH_KEY` | RTX SSH 私钥路径 | `/home/user/.ssh/id_ed25519` |
-| `CORS_ORIGINS` | 逗号分隔的允许跨域源 (留空 = 仅 localhost) | `https://your-domain.example,http://localhost:3000` |
+| `H3_ACCESS_PASS` | 前端 PassGate 口令 | — |
+| `H3_UPLOADS_DIR` | 视频上传目录(任意路径) | `/var/lib/h3-uploads` |
+| `LLM_PROVIDER` | `openai` / `anthropic` / `custom` | `openai` |
+| `LLM_BASE_URL` | LLM API base | — |
+| `LLM_API_KEY` | LLM 鉴权 key | — |
+| `LLM_TEXT_MODEL` | 文本扩写模型 | `gpt-4o` |
+| `RTX_SSH_HOST` | (可选)远端 GPU SSH host | — |
+| `CORS_ORIGINS` | 逗号分隔允许跨域源 | `https://your-domain.example` |
 
-## LLM 后端 (通用)
+完整列表见 `backend/.env.example`。
 
-`expand_prompt.py` 已重构为通用 LLM 客户端 (`backend/app/llm_client.py`),
-**支持任意 OpenAI 兼容协议 / Anthropic native / 自定义 endpoint**。
-
-### 协议选择
-
-| Provider | 鉴权 | 默认 Endpoint | 适用 |
-|---|---|---|---|
-| `openai` | `Authorization: Bearer` | `/chat/completions` | OpenAI / DeepSeek / Ollama / vLLM / 一加 |
-| `anthropic` | `x-api-key` | `/v1/messages` | Claude 3.5/4 系列 |
-| `custom` | `Authorization: Bearer` | 自定义 | 私有部署 |
-
-### 配置示例
-
-```bash
-# OpenAI
-LLM_PROVIDER=openai
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_API_KEY=sk-...
-LLM_TEXT_MODEL=gpt-4o
-LLM_VISION_MODEL=gpt-4o
-
-# Anthropic
-LLM_PROVIDER=anthropic
-LLM_BASE_URL=https://api.anthropic.com
-LLM_API_KEY=sk-ant-...
-LLM_TEXT_MODEL=claude-3-5-sonnet-latest
-LLM_VISION_MODEL=claude-3-5-sonnet-latest
-
-# 一加 (原 MiniMax-M3,OpenAI 协议兼容)
-LLM_PROVIDER=openai
-LLM_BASE_URL=https://api.minimaxi.com/v1
-LLM_API_KEY=...
-LLM_TEXT_MODEL=MiniMax-M3
-LLM_VISION_MODEL=MiniMax-Text-01
-
-# 本地 Ollama
-LLM_PROVIDER=openai
-LLM_BASE_URL=http://127.0.0.1:11434/v1
-LLM_API_KEY=ollama          # Ollama 任意非空字符串
-LLM_TEXT_MODEL=qwen2.5:32b
-LLM_VISION_MODEL=llava:latest
-```
-
-### 向后兼容
-
-旧 `MINIMAX_CN_API_KEY` / `MINIMAX_CN_BASE_URL` 仍然识别 —
-没有显式 `LLM_*` 配置时,llm_client 会从这些变量和 `~/.hermes/.env` 兜底读。
-推荐:clone 后改为 `LLM_*` 命名。
-
-### 降级行为
-
-- `LLM_API_KEY` 空 → `chat_text` 抛 `RuntimeError`,前端拿到 500 + 明确错误信息
-- `LLM_TEXT_MODEL` 空 → 同上
-- `LLM_VISION_MODEL` 空 → vision 禁用,前端自动降级为 T2VA(无参考图)
-
-### 高级:自定义 endpoint
-
-如果你的 LLM 用非常规路径(如 minimax 的 `text/chatcompletion_v2` 而非 `chat/completions`),
-可设:
-
-```bash
-LLM_VISION_ENDPOINT=text/chatcompletion_v2
-LLM_TEXT_ENDPOINT=chat/completions
-```
-
-## systemd 部署
-
-`/etc/systemd/system/h3-studio-api.service` 模板：
-
-```ini
-[Unit]
-Description=H3 Studio API (FastAPI) - serves h3.linode.fun /api and /ws
-After=network.target
-
-[Service]
-Type=simple
-User=hermes
-Group=hermes
-WorkingDirectory=/srv/h3-studio/backend
-Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Environment="PYTHONUNBUFFERED=1"
-# Secrets are loaded from backend/.env by app/config.py at startup.
-ExecStart=/srv/h3-studio/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 18893 --log-level info
-Restart=on-failure
-RestartSec=3s
-
-[Install]
-WantedBy=multi-user.target
-```
-
-注意：**不要在 unit 里写 `Environment=COMFYUI_PASSWORD=***` 之类敏感值**——全部走 `.env`。
-
-## 架构
+### 架构 / Architecture
 
 ```
-浏览器 (h3.linode.fun)
+浏览器 (your-domain.example)
     ↓
 nginx 443 (TLS + 反代)
-    ├─ /         → /srv/h3-studio/frontend/dist  (静态站)
-    ├─ /media/   → /mnt/mmm/video/art/uploads    (历史视频直读)
-    ├─ /api/     → 127.0.0.1:18893               (FastAPI)
-    └─ /ws/      → 127.0.0.1:18893 (Upgrade)     (WebSocket)
+    ├─ /         → h3-studio/frontend/dist     (静态 SPA)
+    ├─ /media/   → H3_UPLOADS_DIR              (历史视频 .mp4 直读)
+    ├─ /api/     → 127.0.0.1:18893             (FastAPI)
+    └─ /ws/      → 127.0.0.1:18893 Upgrade    (WebSocket GPU 事件)
 
 FastAPI (18893)
-    ├─ ws_bridge.py ──→ wss://<COMFYUI_HOST>/ws  (ComfyUI 进度)
-    ├─ comfyui_client.py ──→ POST https://<COMFYUI_HOST>/prompt
-    ├─ gpu_history.py (每 30s 采样 VRAM,写 /tmp/h3-gpu-history.jsonl)
-    └─ prompt_library.py / expand_prompt.py (本地 prompt 库 + LLM 扩写)
-
-h3-video.linode.fun (子域,独立后端 :18891)
-    └─ 展示 /mnt/mmm/video/art/uploads 全部历史视频
+    ├─ ws_bridge.py        → wss://<COMFYUI_HOST>/ws   (进度订阅)
+    ├─ comfyui_client.py   → POST https://<COMFYUI_HOST>/prompt
+    ├─ gpu_processes.py    → SSH nvidia-smi 真实 GPU 状态
+    ├─ gpu_history.py      → 每 5s 采样显存 → JSONL
+    ├─ submit_manager.py   → 长任务 polling + stage
+    └─ expand_prompt.py    → LLM 扩写 prompt
 ```
 
-## 已知坑
+### 已知坑 / Known issues
 
 - **重启卡住**: systemd restart 时 `uvicorn` 等 `orphan_recovery` 完成, 通常 5-8 秒
-- **GPU VRAM 监控 ws 5  GPU 频繁 (<5s)**: GPU history 走文件 io, 远端 ComfyUI 上偶发 stall
 - **prompt 库默认指向 `/tmp/beatapi_repo/prompts`**: 容器清空后会丢, 生产请在 `.env` 覆盖为持久目录
-- **nginx `/media/` 别名不要加 `types{}` default_type**: 会把 `.cover.jpg` 缩略图强制成 `video/mp4`, 飞书/聊天工具读不了
-- **前端 `base: './'`**: 用相对路径而非绝对 `/`, 方便部署到任意子路径
+- **nginx `/media/` 别名不要加 `types{}` default_type**: 会把 `.cover.jpg` 强制成 `video/mp4`
 
-## Patch SOP (重要: 避免 "patch 在磁盘但没 reload")
-
-**任何对后端 `app/*.py` 或前端 `src/**` 的修改, 都必须按下列流程提交**, 缺一不可:
+### Patch SOP / 修改代码流程
 
 ```bash
-# 1. 编辑代码
-cd /srv/h3-studio
-# 改 backend/app/*.py 或 frontend/src/**.ts(x)
+# 1. 改代码
+cd h3-studio
+# 改 backend/app/*.py 或 frontend/src/**
 
-# 2. 后端改完 → 立即 reload (同一动作!)
-cd /srv/h3-studio/backend
-.venv/bin/python -c "import sys; sys.path.insert(0, '.'); from app.main import app; print('imported OK')"  # 语法检查
+# 2. 后端改完
+cd backend
+.venv/bin/python -c "from app.main import app; print('OK')"
 sudo systemctl restart h3-studio-api
 sleep 2
+journalctl -u h3-studio-api -n 20 | grep '\[BUILD\]'  # 验 reload 成功
 
-# 3. 前端改完 → build + nginx 自动 serve (build 完即生效)
-cd /srv/h3-studio/frontend
-npm run build  # 产物在 dist/, nginx serve
-
-# 4. 验 banner 出现 = reload 成功
-journalctl -u h3-studio-api --no-pager -n 20 | grep "\[BUILD\]"
-# 应看到: [BUILD] h3-studio-api pid=<新 PID> git=<commit> patches=...
+# 3. 前端改完
+cd frontend
+npm run build  # 产物在 dist/, nginx serve 即生效
 ```
 
-**RCA 案例 (2026-09-17)**: patch 了 `submit_manager.py` 的 timeout 兜底逻辑, 但忘记 reload, 结果一条 5s 任务撞上 600s timeout 时, 旧代码直接 error, 视频留在 RTX output 没 stage — 手动 scp + sudo stage 才救回来。从那以后启动 banner 强制打印 `[BUILD]` 行, 运维一眼能看出当前进程跑的是哪个 commit。
+详细 RCA 案例见 git log。
 
-## 配套 skill
+---
 
-`~/.hermes/skills/devops/comfyui-webui/` 里有完整的 ComfyUI 操作流程:
-- `inventory-comfyui-instance.sh` — 探活
-- `probe-submit-api.py` — 提交 workflow 测试
-- `melody_to_ref_audio.py` — 音频参考提取
-- `reference-image-upload.md` — 真正上传用户参考图 (vs 当前的 Logo.jpg 偷懒做法)
-- `comfyui-polling-fallback.md` — 长任务 polling 兜底
+## English (en-US)
+
+Web console for generating MiniMax H3 reference-to-video content via ComfyUI (RTX PRO 6000).
+FastAPI backend + React/Vite frontend. Deployable standalone or alongside an existing ComfyUI instance.
+
+### Features
+
+- **PassGate** password authentication (SHA256)
+- **Generate tab**: prompt input + reference image upload + submit
+- **Queue tab**: live GPU/ComfyUI status (5s refresh, WebSocket updates)
+- **History tab**: video grid + optional sibling gallery link
+- **Backend**: 26 FastAPI routes (auth, generate, history, queue, GPU events)
+- **Generic LLM client**: OpenAI-compatible / Anthropic native / custom endpoint
+- **Polling fallback**: handles long tasks when ComfyUI WS handshake fails (nginx strips it)
+- **Orphan recovery**: catches videos staged but lost on restart
+
+### Install & run
+
+```bash
+git clone https://github.com/7567491/h3-studio
+cd h3-studio
+
+# Backend
+cp backend/.env.example backend/.env
+$EDITOR backend/.env   # Required: COMFYUI_BASE_URL / _USERNAME / _PASSWORD / H3_ACCESS_PASS
+chmod 600 backend/.env
+
+cd backend
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 18893
+
+# Frontend (new terminal)
+cd ../frontend
+npm install
+npm run dev   # http://localhost:4173
+```
+
+Health check: <http://127.0.0.1:18893/api/health> → `{"ok":true}`.
+ComfyUI probe: <http://127.0.0.1:18893/api/comfyui/status> → GPU info.
+
+### Video storage (decoupled)
+
+Generated videos land in `H3_UPLOADS_DIR` (configurable in `.env`, default `./uploads`).
+
+**Frontend reads** them via nginx `/media/` location alias. **Example nginx vhost**:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name your-domain.example;
+
+    root /path/to/h3-studio/frontend/dist;
+    index index.html;
+
+    # History videos (read-through, no API hop)
+    location /media/ {
+        alias /path/to/H3_UPLOADS_DIR/;   # ← set to your actual path
+        add_header Cache-Control "public, max-age=86400";
+    }
+
+    # API / WS reverse proxy
+    location /api/ {
+        proxy_pass http://127.0.0.1:18893;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 600s;
+    }
+
+    location /ws/ {
+        proxy_pass http://127.0.0.1:18893;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+**Storage backends supported** (any directory path works):
+- Local directory (default)
+- S3FS mount (e.g. `H3_UPLOADS_DIR=/mnt/s3fs/h3-uploads`)
+- NFS / GlusterFS / CephFS
+- MinIO bucket (via rclone mount)
+
+Requirements:
+1. Backend run-user needs read permission
+2. nginx worker user needs read permission
+3. `/usr/local/bin/stage_h3_video.sh` needs write permission (handles sudo)
+
+### Configuration (`backend/.env`)
+
+| Key | Description | Example |
+|---|---|---|
+| `COMFYUI_BASE_URL` | ComfyUI service URL | `https://your-comfyui-host:8448` |
+| `COMFYUI_USERNAME` | ComfyUI Basic Auth user | — |
+| `COMFYUI_PASSWORD` | ComfyUI Basic Auth password | — |
+| `H3_ACCESS_PASS` | PassGate plaintext (SHA256 hashed server-side) | — |
+| `H3_UPLOADS_DIR` | Generated video directory (any path) | `/var/lib/h3-uploads` |
+| `LLM_PROVIDER` | `openai` / `anthropic` / `custom` | `openai` |
+| `LLM_BASE_URL` | LLM API base URL | — |
+| `LLM_API_KEY` | LLM auth key | — |
+| `LLM_TEXT_MODEL` | Text expansion model | `gpt-4o` |
+| `LLM_VISION_MODEL` | Vision model (empty = disabled) | `gpt-4o` |
+| `RTX_SSH_HOST` | (Optional) Remote GPU SSH host | — |
+| `CORS_ORIGINS` | Comma-separated allowed origins | `https://your-domain.example` |
+
+Full list: `backend/.env.example`.
+
+### Architecture
+
+```
+Browser (your-domain.example)
+    ↓
+nginx 443 (TLS + reverse proxy)
+    ├─ /         → h3-studio/frontend/dist      (static SPA)
+    ├─ /media/   → H3_UPLOADS_DIR               (history video read-through)
+    ├─ /api/     → 127.0.0.1:18893              (FastAPI)
+    └─ /ws/      → 127.0.0.1:18893 Upgrade      (WebSocket GPU events)
+
+FastAPI (18893)
+    ├─ ws_bridge.py        → wss://<COMFYUI_HOST>/ws   (progress subscription)
+    ├─ comfyui_client.py   → POST https://<COMFYUI_HOST>/prompt
+    ├─ gpu_processes.py    → SSH nvidia-smi real GPU status
+    ├─ gpu_history.py      → 5s VRAM sampling → JSONL
+    ├─ submit_manager.py   → Long-task polling + stage
+    └─ expand_prompt.py    → LLM prompt expansion
+```
+
+### Known issues
+
+- **Restart delay**: systemd restart waits for `orphan_recovery`, usually 5-8s
+- **Default prompt library path**: `/tmp/beatapi_repo/prompts` — override in `.env` for persistence
+- **nginx `/media/` alias**: do NOT add `types{}`/`default_type`, breaks `.cover.jpg` MIME
+
+### Patch workflow
+
+```bash
+# 1. Edit code
+cd h3-studio
+
+# 2. Backend changes
+cd backend
+.venv/bin/python -c "from app.main import app; print('OK')"
+sudo systemctl restart h3-studio-api
+journalctl -u h3-studio-api -n 20 | grep '\[BUILD\]'  # verify reload
+
+# 3. Frontend changes
+cd frontend
+npm run build  # dist/ is served by nginx
+```
+
+RCA case (patch-in-disk-but-not-reload) is documented in git history.
+
+---
 
 ## License
 
 **Apache License 2.0** — See [`LICENSE`](./LICENSE) for the full text.
 
-### Quick summary
+### Summary
+
 - ✅ Free to use, modify, and distribute (with attribution)
 - ✅ Commercial use allowed
 - ✅ Patent grant included
-- ⚠️ Model files (e.g. `minimax_h3_*.safetensors`, `qwen3vl_32b_minimax_h3_*.safetensors`) are **NOT** covered by this license — they are the property of MiniMax Inc. and require separate authorization to use.
+- ⚠️ **Model files** (e.g. `minimax_h3_*.safetensors`, `qwen3vl_32b_minimax_h3_*.safetensors`) are **NOT** covered by this license — they are the property of MiniMax Inc. and require separate authorization to use.
 
-## License (legacy notice)
+### Legacy notice
 
-The repository was previously released under a Proprietary License. As of 2026-09-18 it has been relicensed to Apache-2.0 to enable public open-source collaboration. Older commits in `git log` may reference the Proprietary terms, but the current `LICENSE` file is the authoritative grant.
+This repository was previously released under a Proprietary License. As of 2026-09-18 it has been relicensed to Apache-2.0 to enable public open-source collaboration. Older commits in `git log` may reference the Proprietary terms; the current `LICENSE` file is the authoritative grant.

@@ -26,7 +26,8 @@ async def recover_orphans() -> int:
     recovered = 0
     try:
         # 注意 (2026-08-28 修): 这里以前有 date_dir.mkdir(parents=True)。
-        # /mnt/mmm 是 s3fs 挂载 (user_id=0,group_id=0,目录 755),本服务跑在
+        # H3_UPLOADS_DIR 是可配置的 (默认 ./uploads, 可换本地或 S3FS)。
+        # 注释里的 mnt/mmm 是作者自己的 s3fs 挂载示例, 不是代码约束。
         # hermes 身份下 → mkdir 必然 PermissionError,把整个恢复流程掐死在第一步,
         # 每次启动都刷 "recover_orphans failed: Permission denied"。
         # 实际不需要自己建目录: 下面第 70 行的 sudo 桥接 stage_h3_video.sh
