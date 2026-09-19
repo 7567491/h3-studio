@@ -298,11 +298,14 @@ journalctl -u h3-studio-api --no-pager -n 20 | grep "\[BUILD\]"
 
 ## License
 
-**Proprietary — All Rights Reserved.** See [`LICENSE`](./LICENSE) for full terms.
+**Apache License 2.0** — See [`LICENSE`](./LICENSE) for the full text.
 
-仓库**不是**开源项目:
-- 源码允许个人/内部团队 clone、修改、部署
-- **禁止**公开 fork、对外分发、再授权
-- 商业用途需作者书面授权
-- 仓库内代码引用了 MiniMax 私有模型文件结构 (H3 model names) — 第三方独立运行需要从 MiniMax 获取模型访问权限
-- 实际授权边界以 `LICENSE` 文件为准,README 此处仅为概要
+### Quick summary
+- ✅ Free to use, modify, and distribute (with attribution)
+- ✅ Commercial use allowed
+- ✅ Patent grant included
+- ⚠️ Model files (e.g. `minimax_h3_*.safetensors`, `qwen3vl_32b_minimax_h3_*.safetensors`) are **NOT** covered by this license — they are the property of MiniMax Inc. and require separate authorization to use.
+
+## License (legacy notice)
+
+The repository was previously released under a Proprietary License. As of 2026-09-18 it has been relicensed to Apache-2.0 to enable public open-source collaboration. Older commits in `git log` may reference the Proprietary terms, but the current `LICENSE` file is the authoritative grant.

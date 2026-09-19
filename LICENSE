@@ -1,30 +1,30 @@
-H3 Studio — Proprietary License
-Copyright (c) 2026 Jack Zhang. All rights reserved.
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
 
-This repository and all its contents are proprietary and confidential.
-Unauthorized copying, modification, distribution, public display, or use of
-this software, via any medium, is strictly prohibited without prior written
-permission from the copyright holder.
+   Copyright (c) 2026 Jack Zhang
 
-Permitted uses:
-  - Internal cloning for the author's own development and deployment
-  - Internal use by the author's team members under NDA
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-Prohibited without written authorization:
-  - Public forks or mirrors
-  - Redistribution (in source or binary form)
-  - Commercial use
-  - Derivative works for external publication
+       http://www.apache.org/licenses/LICENSE-2.0
 
-The H3 model files referenced in this codebase (minimax_h3_*.safetensors,
-qwen3vl_32b_minimax_h3_*.safetensors) are the property of MiniMax Inc. and
-require separate authorization from MiniMax for use. This license does NOT
-grant any rights to those model files.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 
-For licensing inquiries, contact the author via the GitHub profile listed
-on the repository's main page.
+   =======================================================================
+   ADDITIONAL TERMS — H3 Model Files Notice
+   =======================================================================
 
-THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, OF
+   The H3 model file names referenced in this codebase
+   (e.g. minimax_h3_*.safetensors, qwen3vl_32b_minimax_h3_*.safetensors)
+   are the property of MiniMax Inc. The Apache 2.0 license above does NOT
+   grant any rights to those model files. To run this software against
+   MiniMax H3 models, you must obtain separate authorization from MiniMax.
+
+   This notice is informational only and does not modify the Apache 2.0
+   license grant for the source code in this repository.
