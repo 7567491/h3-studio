@@ -7,6 +7,13 @@
 
 > **English** · **中文**
 
+## Architecture / 架构图
+
+![H3 Studio architecture](./docs/architecture.png)
+
+> 一页纸架构图:`docs/architecture.dot` (Graphviz 源) + `docs/architecture.png` (1920x1080)
+> 所有 hostname / IP / 路径均为占位符,可在 `docs/architecture.dot` 自由修改后用 `dot -Tpng` 重渲。
+
 ---
 
 ## 中文 (zh-CN)
