@@ -1,185 +1,119 @@
 digraph H3Studio {
-    # === Global attributes ===
-    rankdir=LR;
-    splines=spline;
-    nodesep=0.35;
+    // TB: top-to-bottom 让 row 顺序清晰
+    rankdir=TB;
+    splines=ortho;
+    nodesep=0.5;
     ranksep=0.7;
     bgcolor="#0a0a1f";
     fontname="Helvetica";
     pad=0.4;
-    margin=0.2;
 
-    # === Default node style ===
-    node [fontname="Helvetica", shape=box, style="rounded,filled", fontcolor="#0a0a1f", fontsize=11];
-    edge [fontname="Helvetica", fontcolor="#cccccc", fontsize=10, penwidth=1.8];
+    node [fontname="Helvetica", shape=box, style="rounded,filled", fontcolor="#0a0a1f", fontsize=12, margin="0.18,0.10"];
+    edge [fontname="Helvetica", fontcolor="#a0c8ff", fontsize=10, penwidth=1.6];
 
-    # === Title (top, separate area) ===
     labelloc="t";
-    label=<<B><FONT POINT-SIZE="36" COLOR="#ffffff">H3 Studio</FONT></B><BR/><FONT POINT-SIZE="14" COLOR="#5cf0e8">MiniMax H3 Video Generation · FastAPI + React + ComfyUI on RTX PRO 6000</FONT>>;
+    label=<<B><FONT POINT-SIZE="34" COLOR="#ffffff">H3 Studio</FONT></B><BR/><FONT POINT-SIZE="13" COLOR="#5cf0e8">MiniMax H3 Video Generation · FastAPI + React + ComfyUI on RTX PRO 6000</FONT>>;
 
-    # === ROW 1: BROWSER ===
-    subgraph cluster_browser {
-        label=<<B><FONT POINT-SIZE="15" COLOR="#ffffff">Browser</FONT></B>>;
-        labeljust="c";
-        style="rounded,filled";
-        fillcolor="#1a1a3a";
-        color="#5cf0e8";
-        fontcolor="#5cf0e8";
-        fontsize=16;
-        margin=14;
+    // ===================== ROW 1: Browser =====================
+    browser [
+        label=<<B><FONT POINT-SIZE="15" COLOR="#ffffff">Browser  ·  Web SPA</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">PassGate · Generate · Queue · History</FONT>>,
+        fillcolor="#e8f4ff", color="#5cf0e8", width=4.0, height=0.9];
 
-        browser [
-            label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">Web SPA</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">PassGate · Generate</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">Queue · History</FONT>>,
-            fillcolor="#e8f4ff",
-            color="#5cf0e8",
-            width=2.4,
-            height=1.4,
-        ];
-    }
+    // ===================== ROW 2: Nginx =====================
+    nginx [
+        label=<<B><FONT POINT-SIZE="15" COLOR="#ffffff">Nginx Reverse Proxy  ·  443 TLS  ·  your-domain.example</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff" FACE="monospace">/         →  frontend/dist        /media/   →  H3_UPLOADS_DIR/        /api/     →  127.0.0.1:18893        /ws/      →  127.0.0.1:18893</FONT>>,
+        fillcolor="#1c2a4a", fontcolor="#ffffff", color="#5cf0e8", width=10.5, height=0.9];
 
-    # === ROW 2: NGINX ===
-    subgraph cluster_nginx {
-        label=<<B><FONT POINT-SIZE="15" COLOR="#ffffff">Nginx Reverse Proxy  ·  443 TLS</FONT></B>>;
-        labeljust="c";
-        style="rounded,filled";
-        fillcolor="#1a1a3a";
-        color="#5cf0e8";
-        fontcolor="#5cf0e8";
-        fontsize=16;
-        margin=14;
+    // ===================== ROW 3a: API endpoints (10 个 note, 一行) =====================
+    api_health     [label=<GET /api/health>,          shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    api_auth       [label=<POST /api/auth/check>,     shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    api_submit     [label=<POST /api/submit>,         shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    api_expand     [label=<POST /api/expand-prompt>,  shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    api_history    [label=<GET /api/history>,         shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    api_queue      [label=<GET /api/queue>,           shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    api_gpu_proc   [label=<GET /api/gpu/processes>,   shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    api_gpu_hist   [label=<GET /api/gpu/history>,     shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    ws_progress    [label=<WS /ws/progress>,          shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
+    ws_gpu_events  [label=<WS /ws/gpu-events>,        shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.4, height=0.4];
 
-        nginx [
-            label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">your-domain.example</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">/         →  frontend/dist</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">/media/   →  H3_UPLOADS_DIR/</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">/api/     →  127.0.0.1:18893</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">/ws/      →  127.0.0.1:18893</FONT>>,
-            fillcolor="#1c2a4a",
-            fontcolor="#ffffff",
-            color="#5cf0e8",
-            width=3.6,
-            height=1.9,
-        ];
-    }
+    // ===================== ROW 3b: Backend modules (7 个方块) =====================
+    submit_manager   [label="submit_manager.py",  fillcolor="#fff0d8", color="#f5a623", width=1.8, height=0.5, fontsize=11];
+    comfyui_client   [label="comfyui_client.py",  fillcolor="#fff0d8", color="#f5a623", width=1.8, height=0.5, fontsize=11];
+    ws_bridge        [label="ws_bridge.py",       fillcolor="#fff0d8", color="#f5a623", width=1.8, height=0.5, fontsize=11];
+    expand_prompt    [label="expand_prompt.py",   fillcolor="#fff0d8", color="#f5a623", width=1.8, height=0.5, fontsize=11];
+    history_scanner  [label="history_scanner.py", fillcolor="#fff0d8", color="#f5a623", width=1.8, height=0.5, fontsize=11];
+    gpu_processes    [label="gpu_processes.py",   fillcolor="#fff0d8", color="#f5a623", width=1.8, height=0.5, fontsize=11];
+    gpu_history      [label="gpu_history.py",     fillcolor="#fff0d8", color="#f5a623", width=1.8, height=0.5, fontsize=11];
 
-    # === ROW 3: BACKEND (no cluster — modules are individual nodes) ===
-    # Module nodes
-    api_health      [label="GET /api/health",          shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    api_auth        [label="POST /api/auth/check",     shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    api_submit      [label="POST /api/submit",         shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    api_expand      [label="POST /api/expand-prompt",  shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    api_history     [label="GET /api/history",         shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    api_queue       [label="GET /api/queue",           shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    api_gpu_proc    [label="GET /api/gpu/processes",   shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    api_gpu_hist    [label="GET /api/gpu/history",     shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    ws_progress     [label="WS /ws/progress/...",      shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-    ws_gpu_events   [label="WS /ws/gpu-events",        shape=note, fillcolor="#0d1b3a", fontcolor="#5cf0e8", fontsize=10, width=1.6];
-
-    # Backend modules (the inner layer)
-    submit_manager   [label="submit_manager.py",   fillcolor="#ffeed0", color="#f5a623", width=2.0, fontsize=11];
-    comfyui_client   [label="comfyui_client.py",   fillcolor="#ffeed0", color="#f5a623", width=2.0, fontsize=11];
-    ws_bridge        [label="ws_bridge.py",        fillcolor="#ffeed0", color="#f5a623", width=2.0, fontsize=11];
-    expand_prompt    [label="expand_prompt.py",    fillcolor="#ffeed0", color="#f5a623", width=2.0, fontsize=11];
-    history_scanner  [label="history_scanner.py",  fillcolor="#ffeed0", color="#f5a623", width=2.0, fontsize=11];
-    gpu_processes    [label="gpu_processes.py",    fillcolor="#ffeed0", color="#f5a623", width=2.0, fontsize=11];
-    gpu_history      [label="gpu_history.py",      fillcolor="#ffeed0", color="#f5a623", width=2.0, fontsize=11];
-
-    # Backend outer panel (just label, no cluster so individual nodes can position)
-    backend_label [
-        label=<<B><FONT POINT-SIZE="15" COLOR="#ffffff">FastAPI Backend  ·  port 18893</FONT></B>>,
-        shape=plaintext,
-        fillcolor="#0a0a1f",
-        fontcolor="#ffffff",
-        fontsize=16,
-    ];
-
-    # === ROW 4: EXTERNAL ===
+    // ===================== ROW 4: External (3 columns) =====================
     comfyui [
-        label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">ComfyUI</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">RTX PRO 6000 · 96 GB</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">/prompt · /view · /history</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">H3 model suite</FONT>>,
-        fillcolor="#3a1a4a",
-        fontcolor="#ffffff",
-        color="#a45cf0",
-        width=3.0,
-        height=1.6,
-    ];
+        label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">ComfyUI</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#e0d8ff">RTX PRO 6000 · 96 GB</FONT><BR/><FONT POINT-SIZE="10" COLOR="#e0d8ff">/prompt · /view · /history</FONT><BR/><FONT POINT-SIZE="10" COLOR="#e0d8ff">H3 model suite</FONT>>,
+        fillcolor="#3a1a4a", fontcolor="#ffffff", color="#a45cf0", width=3.0, height=1.4];
 
     rtx_host [
-        label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">RTX Server  ·  SSH</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">nvidia-smi</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">GPU util + VRAM</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">process introspection</FONT>>,
-        fillcolor="#3a2a1a",
-        fontcolor="#ffffff",
-        color="#f0a85c",
-        width=3.0,
-        height=1.4,
-    ];
+        label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">RTX Server  ·  SSH</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#ffd8b0">nvidia-smi</FONT><BR/><FONT POINT-SIZE="10" COLOR="#ffd8b0">GPU util + VRAM</FONT><BR/><FONT POINT-SIZE="10" COLOR="#ffd8b0">process introspection</FONT>>,
+        fillcolor="#3a2a1a", fontcolor="#ffffff", color="#f0a85c", width=3.0, height=1.4];
 
     llm [
-        label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">LLM Provider</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">OpenAI / Anthropic / Custom</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">Text + Vision</FONT>>,
-        fillcolor="#1a3a3a",
-        fontcolor="#ffffff",
-        color="#3af0a0",
-        width=3.0,
-        height=1.2,
-    ];
+        label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">LLM Provider</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#c0ffd8">OpenAI / Anthropic / Custom</FONT><BR/><FONT POINT-SIZE="10" COLOR="#c0ffd8">Text + Vision</FONT>>,
+        fillcolor="#1a3a3a", fontcolor="#ffffff", color="#3af0a0", width=3.0, height=1.2];
 
-    # === ROW 5: STORAGE ===
+    // ===================== ROW 5: Storage =====================
     storage [
-        label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">H3_UPLOADS_DIR  (configurable: local · S3FS · NFS · MinIO)</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">2026-MM-DD/H3_studio_NNNNN_.mp4  +  .cover.jpg  +  .meta.json</FONT><BR/><FONT POINT-SIZE="10" COLOR="#a0c8ff">stage_h3_video.sh  ·  sudo bridge  ·  history_scanner.py</FONT>>,
-        fillcolor="#0d2a1a",
-        fontcolor="#ffffff",
-        color="#3af0a0",
-        width=10.0,
-        height=1.2,
-    ];
+        label=<<B><FONT POINT-SIZE="14" COLOR="#ffffff">H3_UPLOADS_DIR  ·  configurable: local · S3FS · NFS · MinIO</FONT></B><BR/><FONT POINT-SIZE="10" COLOR="#c0ffd8" FACE="monospace">2026-MM-DD/H3_studio_NNNNN_.mp4  +  .cover.jpg  +  .meta.json</FONT><BR/><FONT POINT-SIZE="10" COLOR="#c0ffd8">stage_h3_video.sh  ·  sudo bridge  ·  history_scanner.py</FONT>>,
+        fillcolor="#0d2a1a", fontcolor="#ffffff", color="#3af0a0", width=10.5, height=1.0];
 
-    # === EDGES ===
-    # Main horizontal flow
-    browser -> nginx [label="HTTPS · JSON · WebSocket", color="#5cf0e8", penwidth=2.5];
+    // ===================== EDGES =====================
+    browser -> nginx [label=" HTTPS · JSON · WebSocket ", color="#5cf0e8", penwidth=2.5];
 
-    # Routes to backend (nginx → API endpoints, dotted to indicate routing)
-    nginx -> api_health    [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> api_auth      [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> api_submit    [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> api_expand    [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> api_history   [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> api_queue     [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> api_gpu_proc  [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> api_gpu_hist  [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> ws_progress   [style=dashed, color="#5cf0e8", arrowsize=0.7];
-    nginx -> ws_gpu_events [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    // nginx routes to API endpoints (dashed cyan)
+    nginx -> api_health     [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> api_auth       [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> api_submit     [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> api_expand     [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> api_history    [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> api_queue      [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> api_gpu_proc   [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> api_gpu_hist   [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> ws_progress    [style=dashed, color="#5cf0e8", arrowsize=0.7];
+    nginx -> ws_gpu_events  [style=dashed, color="#5cf0e8", arrowsize=0.7];
 
-    # API endpoints → modules
-    api_submit    -> submit_manager   [color="#f5a623", arrowsize=0.8];
-    api_queue     -> submit_manager   [color="#f5a623", arrowsize=0.8];
-    api_history   -> history_scanner  [color="#f5a623", arrowsize=0.8];
-    api_gpu_proc  -> gpu_processes    [color="#f5a623", arrowsize=0.8];
-    api_gpu_hist  -> gpu_history      [color="#f5a623", arrowsize=0.8];
-    api_expand    -> expand_prompt    [color="#f5a623", arrowsize=0.8];
-    ws_progress   -> ws_bridge        [color="#f5a623", arrowsize=0.8];
-    ws_gpu_events -> ws_bridge        [color="#f5a623", arrowsize=0.8];
+    // API → modules
+    api_submit    -> submit_manager  [color="#f5a623", arrowsize=0.8];
+    api_queue     -> submit_manager  [color="#f5a623", arrowsize=0.8];
+    api_history   -> history_scanner [color="#f5a623", arrowsize=0.8];
+    api_gpu_proc  -> gpu_processes   [color="#f5a623", arrowsize=0.8];
+    api_gpu_hist  -> gpu_history     [color="#f5a623", arrowsize=0.8];
+    api_expand    -> expand_prompt   [color="#f5a623", arrowsize=0.8];
+    ws_progress   -> ws_bridge       [color="#f5a623", arrowsize=0.8];
+    ws_gpu_events -> ws_bridge       [color="#f5a623", arrowsize=0.8];
 
-    # Modules → External
-    ws_bridge      -> comfyui [label="wss://COMFYUI_HOST/ws", color="#a45cf0", penwidth=2];
-    comfyui_client -> comfyui [label="POST /prompt",          color="#a45cf0", penwidth=2];
-    submit_manager -> comfyui [label="submit /prompt",         color="#a45cf0", style=dashed, penwidth=1.5];
-    gpu_processes  -> rtx_host [label="SSH nvidia-smi",        color="#f0a85c", penwidth=2];
-    expand_prompt  -> llm      [label="LLM HTTP",              color="#3af0a0", penwidth=2];
+    // Modules → External
+    ws_bridge      -> comfyui [label="wss://COMFYUI/ws",  color="#a45cf0", penwidth=2.2];
+    comfyui_client -> comfyui [label="POST /prompt",      color="#a45cf0", penwidth=2.2];
+    submit_manager -> comfyui [label="submit /prompt",     color="#a45cf0", style=dashed, penwidth=1.5];
+    gpu_processes  -> rtx_host [label="SSH nvidia-smi",    color="#f0a85c", penwidth=2.2];
+    expand_prompt  -> llm      [label="LLM HTTP",          color="#3af0a0", penwidth=2.2];
 
-    # Stage flow (submit_manager writes to storage via sudo bridge)
-    submit_manager -> storage [label="stage_h3_video.sh (sudo)", color="#3af0a0", penwidth=2];
-    history_scanner -> storage [label="scan *.mp4",             color="#3af0a0", style=dashed, penwidth=1.5];
+    // Modules → Storage
+    submit_manager  -> storage [label="stage_h3_video.sh (sudo)", color="#3af0a0", penwidth=2.2];
+    history_scanner -> storage [label="scan *.mp4",              color="#3af0a0", style=dashed, penwidth=1.5];
 
-    # Storage → nginx (playback)
-    storage -> nginx [label="static .mp4 (.jpg)", color="#a0c8ff", style=dotted, penwidth=1.5, constraint=false, arrowhead=vee];
+    // Storage → nginx (playback)
+    storage -> nginx [label=" static .mp4 / .jpg ", color="#a0c8ff", style=dotted, penwidth=1.5, arrowhead=vee];
 
-    # === RANKING (force horizontal row layout) ===
+    // ===================== RANK (TB: 强制每个 ROW 横向水平) =====================
     {rank=same; browser}
     {rank=same; nginx}
-    {rank=same; api_health; api_auth; api_submit; api_expand; api_history}
-    {rank=same; api_queue; api_gpu_proc; api_gpu_hist; ws_progress; ws_gpu_events}
-    {rank=same; submit_manager; comfyui_client; ws_bridge; expand_prompt; history_scanner; gpu_processes; gpu_history}
-    {rank=same; comfyui; rtx_host; llm}
+    {rank=same; api_health, api_auth, api_submit, api_expand, api_history, api_queue, api_gpu_proc, api_gpu_hist, ws_progress, ws_gpu_events}
+    {rank=same; submit_manager, comfyui_client, ws_bridge, expand_prompt, history_scanner, gpu_processes, gpu_history}
+    {rank=same; comfyui, rtx_host, llm}
     {rank=same; storage}
 
-    # Force vertical ordering of clusters (Browser above Nginx above Backend above External above Storage)
+    // 强制垂直顺序 (最小化 invis edges)
     browser -> nginx [style=invis];
     nginx -> api_health [style=invis];
-    api_history -> submit_manager [style=invis];
+    api_gpu_events -> submit_manager [style=invis];
     submit_manager -> comfyui [style=invis];
     comfyui -> storage [style=invis];
 }
