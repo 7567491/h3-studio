@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { api, type QueueSnapshot } from '../lib/api'
 import { useActiveSub } from '../lib/activeSub'
+import { useT } from '../lib/i18n'
 import ProgressCard from '../components/ProgressCard'
 
 interface GpuStatus {
@@ -26,6 +27,7 @@ interface GpuHistoryResp {
 }
 
 export default function QueueTab() {
+  const { t } = useT()
   const [q, setQ] = useState<QueueSnapshot | null>(null)
   const [status, setStatus] = useState<GpuStatus | null>(null)
   const [comfyErr, setComfyErr] = useState<string | null>(null)
@@ -170,9 +172,8 @@ export default function QueueTab() {
   return (
     <div className="space-y-4 animate-slide-up">
       <div>
-        <h2 className="text-2xl font-bold">GPU 状态</h2>
-        <p className="text-sm text-gray-400 mt-1">ComfyUI 实时队列 · 5秒刷新</p>
-        <p className="text-xs text-gray-600 mt-0.5">GPU Status · Live queue, refreshes every 5s</p>
+        <h2 className="text-2xl font-bold">{t('queue.title')}</h2>
+        <p className="text-sm text-gray-400 mt-1">{t('queue.subtitle')}</p>
       </div>
 
       {comfyErr && (() => {
@@ -183,7 +184,7 @@ export default function QueueTab() {
         else if (comfyErr.length > 120) shortErr = comfyErr.slice(0, 120) + '…'
         return (
           <div className="bg-bg-card border border-white/10 rounded-2xl p-3 text-gray-400 text-xs flex items-center gap-2">
-            <span>ℹ️ ComfyUI 未启用</span>
+            <span>{t('queue.comfyDown')}</span>
             {shortErr && shortErr !== 'ComfyUI 不可用' && (
               <span className="font-mono text-gray-500">· {shortErr}</span>
             )}
@@ -192,7 +193,7 @@ export default function QueueTab() {
       })()}
 
       {loading && !q && (
-        <div className="text-center text-gray-500 py-12">加载中…</div>
+        <div className="text-center text-gray-500 py-12">{t('common.loading')}</div>
       )}
 
       {q && (
@@ -218,26 +219,26 @@ export default function QueueTab() {
                 {/* 1) 正在生成 + 当前任务剩余 */}
                 <div className="bg-bg-hover rounded-xl p-3">
                   <div className="text-[10px] text-gray-400 uppercase tracking-wider">
-                    正在生成 · Generating
+                    {t('queue.running')} · {t('queue.generating')}
                   </div>
                   <div className="text-2xl font-bold text-warn mt-1 tabular-nums">
                     {q.running_count}
                   </div>
                   <div className="text-[10px] text-gray-500 mt-1 tabular-nums">
-                    剩余 {q.running_count > 0 ? `~${formatETA(etaRunningSec)}` : '—'}
+                    {t('queue.remaining')} {q.running_count > 0 ? `~${formatETA(etaRunningSec)}` : '—'}
                   </div>
                 </div>
 
                 {/* 2) 排队等待 + Σpending 剩余 */}
                 <div className="bg-bg-hover rounded-xl p-3">
                   <div className="text-[10px] text-gray-400 uppercase tracking-wider">
-                    排队等待 · Queued
+                    {t('queue.queued')} · {t('queue.queuedEn')}
                   </div>
                   <div className="text-2xl font-bold text-accent mt-1 tabular-nums">
                     {q.pending_count}
                   </div>
                   <div className="text-[10px] text-gray-500 mt-1 tabular-nums">
-                    剩余 ~{formatETA(pendingTotalSec)}
+                    {t('queue.remaining')} ~{formatETA(pendingTotalSec)}
                   </div>
                 </div>
 
@@ -245,7 +246,7 @@ export default function QueueTab() {
                 {etaSelfSec !== null && (
                   <div className="bg-bg-hover rounded-xl p-3">
                     <div className="text-[10px] text-accent uppercase tracking-wider">
-                      我的任务 · My ETA
+                      {t('queue.myEta')} · {t('queue.myEtaEn')}
                     </div>
                     <div className="text-xl font-bold text-accent mt-1 tabular-nums">
                       ~{formatETA(etaSelfSec)}
@@ -264,31 +265,31 @@ export default function QueueTab() {
                 q.running[0]?.elapsed_sec !== undefined &&
                 q.running[0].elapsed_sec > 0 && (
                   <div className="text-[10px] text-gray-600 text-center">
-                    当前已跑 {q.running[0].elapsed_sec.toFixed(0)}s / 估算 {q.running[0].estimated_total_sec}s
+                    {t('queue.elapsed')} {q.running[0].elapsed_sec.toFixed(0)}s / {t('queue.estimated')} {q.running[0].estimated_total_sec}s
                   </div>
                 )}
 
               {/* 校准元信息(放最后,小字) */}
               <div className="text-[10px] text-gray-600 text-center pt-1 border-t border-white/5">
-                校准 {q.calibration_samples ?? 0} 条历史 · {q.sec_per_frame?.toFixed(2) ?? '—'} s/帧
+                {t('queue.calibration')} {q.calibration_samples ?? 0} {t('queue.samples')} · {q.sec_per_frame?.toFixed(2) ?? '—'} {t('queue.secPerFrame')}
               </div>
             </div>
           )}
 
           {/* 正在运行 */}
           {q.running.length > 0 && (
-            <Section title="⚡ Running">
-              {q.running.map((t, i) => (
-                <RunningTaskRow key={t.prompt_id ?? i} task={t} />
+            <Section title={t('queue.runningSection')}>
+              {q.running.map((task, i) => (
+                <RunningTaskRow key={task.prompt_id ?? i} task={task} />
               ))}
             </Section>
           )}
 
           {/* 等待中 */}
           {q.pending.length > 0 && (
-            <Section title="⏳ Pending">
-              {q.pending.map((t, i) => (
-                <TaskRow key={t.prompt_id ?? i} task={t} kind="pending" queueIdx={i + 1} />
+            <Section title={t('queue.pendingSection')}>
+              {q.pending.map((task, i) => (
+                <TaskRow key={task.prompt_id ?? i} task={task} kind="pending" queueIdx={i + 1} />
               ))}
             </Section>
           )}
@@ -296,7 +297,7 @@ export default function QueueTab() {
           {q.running_count === 0 && q.pending_count === 0 && (
             <div className="text-center text-gray-500 py-12">
               <div className="text-4xl mb-2">✨</div>
-              <div className="text-sm">队列空闲,可以提交新任务</div>
+              <div className="text-sm">{t('queue.noJob')}</div>
             </div>
           )}
         </>
@@ -306,8 +307,8 @@ export default function QueueTab() {
       {activeSub && (
         <div className="mt-4">
           <div className="flex items-center gap-2 mb-2 text-sm text-gray-400">
-            <span>📺 当前任务</span>
-            <span className="text-[10px] text-gray-600">Active submission · 跨 Tab 共享</span>
+            <span>📺 {t('queue.detail')}</span>
+            <span className="text-[10px] text-gray-600">{t('queue.toGenerateTab')}</span>
           </div>
           <ProgressCard
             sub={activeSub}
@@ -354,6 +355,7 @@ type ModelsLoadedResp = {
 }
 
 function GpuRealStatus() {
+  const { t } = useT()
   const [data, setData] = useState<Awaited<ReturnType<typeof api.gpuProcesses>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -364,7 +366,7 @@ function GpuRealStatus() {
       setData(d)
       setErr(d.last_error ?? null)
     } catch (e: any) {
-      setErr(e.message ?? 'fetch failed')
+      setErr(e.message ?? t('queue.fetchFailed'))
     } finally {
       setLoading(false)
     }
@@ -387,12 +389,12 @@ function GpuRealStatus() {
     <div className="bg-bg-card rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm text-gray-300">🖥️ GPU 真实状态</div>
-          <div className="text-[10px] text-gray-600">nvidia-smi (via SSH) · 5秒刷新</div>
+          <div className="text-sm text-gray-300">{t('queue.gpuRealStatus')}</div>
+          <div className="text-[10px] text-gray-600">{t('queue.nvidiaSmi')}</div>
         </div>
         {data?.gpu && (
           <div className="text-right">
-            <div className="text-[10px] text-gray-500">整卡 VRAM</div>
+            <div className="text-[10px] text-gray-500">{t('queue.vramWhole')}</div>
             <div className="text-sm font-mono text-accent">
               {data.gpu.memory_used_gb.toFixed(1)} / {data.gpu.memory_total_gb.toFixed(1)} GB
               <span className="text-gray-500 ml-1">
@@ -404,12 +406,12 @@ function GpuRealStatus() {
       </div>
 
       {loading && !data && (
-        <div className="text-xs text-gray-500 py-2">加载中…</div>
+        <div className="text-xs text-gray-500 py-2">{t('common.loading')}</div>
       )}
 
       {err && (
         <div className="text-xs text-warn bg-warn/10 border border-warn/30 rounded p-2">
-          ⚠ {err} {data?.stale && '(显示缓存)'}
+          ⚠ {err} {data?.stale && `(${t('queue.stale')})`}
         </div>
       )}
 
@@ -418,13 +420,13 @@ function GpuRealStatus() {
           {/* 整卡 stats */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-bg rounded p-2">
-              <div className="text-gray-500 text-[10px]">GPU 型号</div>
+              <div className="text-gray-500 text-[10px]">{t('queue.gpuModel')}</div>
               <div className="text-gray-300 truncate" title={data.gpu.name}>
                 {data.gpu.name.replace('NVIDIA ', '')}
               </div>
             </div>
             <div className="bg-bg rounded p-2">
-              <div className="text-gray-500 text-[10px]">利用 / 温 / 功耗</div>
+              <div className="text-gray-500 text-[10px]">{t('queue.utilTempPower')}</div>
               <div className="font-mono text-gray-300">
                 {data.gpu.utilization_gpu_pct}% / {data.gpu.temperature_c}°C / {data.gpu.power_watts.toFixed(0)}W
               </div>
@@ -434,7 +436,7 @@ function GpuRealStatus() {
           {/* 进程级 VRAM 占用 */}
           <div className="space-y-1.5">
             <div className="text-[10px] text-gray-500 uppercase tracking-wide">
-              进程级占用 ({data.processes.length} 个)
+              {t('queue.processUsage')} ({data.processes.length} {t('queue.processCount')})
             </div>
 
             {vllmProcess && (
@@ -446,7 +448,7 @@ function GpuRealStatus() {
                       VLLM::{data.vllm_models[0]?.id ?? 'EngineCore'}
                     </span>
                     <span className="text-[9px] text-err bg-err/10 px-1 rounded flex-shrink-0">
-                      非 ComfyUI
+                      {t('queue.notComfyUI')}
                     </span>
                   </div>
                   <div className="font-mono text-err flex-shrink-0">
@@ -479,7 +481,7 @@ function GpuRealStatus() {
                       ComfyUI
                     </span>
                     <span className="text-[9px] text-gray-500 bg-bg px-1 rounded flex-shrink-0">
-                      PID {comfyuiProcess.pid}
+                      {t('queue.pid')} {comfyuiProcess.pid}
                     </span>
                   </div>
                   <div className="font-mono text-gray-300 flex-shrink-0">
@@ -529,10 +531,10 @@ function GpuRealStatus() {
 
           {/* 底部 — 刷新时间 */}
           <div className="pt-2 mt-1 border-t border-white/5 text-[10px] text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
-            <span>已用: <span className="text-accent font-mono">{data.gpu.memory_used_gb.toFixed(1)} GB</span></span>
-            <span>空闲: <span className="text-gray-300 font-mono">{data.gpu.memory_free_gb.toFixed(1)} GB</span></span>
-            <span>总和: <span className="text-gray-300 font-mono">{data.gpu.memory_total_gb.toFixed(1)} GB</span></span>
-            <span className="text-gray-600 ml-auto">每 5s 刷新 · {data.stale ? '⚠ 缓存' : '✓ 实时'}</span>
+            <span>{t('queue.vramUsed')}: <span className="text-accent font-mono">{data.gpu.memory_used_gb.toFixed(1)} GB</span></span>
+            <span>{t('queue.vramFree')}: <span className="text-gray-300 font-mono">{data.gpu.memory_free_gb.toFixed(1)} GB</span></span>
+            <span>{t('queue.vramTotal')}: <span className="text-gray-300 font-mono">{data.gpu.memory_total_gb.toFixed(1)} GB</span></span>
+            <span className="text-gray-600 ml-auto">{t('queue.refresh')} · {data.stale ? t('health.cached') : t('health.live')}</span>
           </div>
         </>
       )}
@@ -680,6 +682,7 @@ function ComfyuiModelsBlock({
     meta: { category: string; icon: string; size_gb: number }
     loaded: boolean
   }) {
+    const { t } = useT()
     const sizeGb = realSizeGb(filename, meta.size_gb)
     const pct = totalGb > 0 ? (sizeGb / totalGb) * 100 : 0
     return (
@@ -691,7 +694,7 @@ function ComfyuiModelsBlock({
               comfy-{meta.category}
             </span>
             {loaded && (
-              <span className="text-[9px] text-accent bg-accent/10 px-1 rounded flex-shrink-0">已加载</span>
+              <span className="text-[9px] text-accent bg-accent/10 px-1 rounded flex-shrink-0">{t('queue.loaded')}</span>
             )}
           </div>
           <div className={`font-mono flex-shrink-0 ${loaded ? 'text-gray-300' : 'text-gray-500'}`}>
@@ -750,28 +753,30 @@ function ComfyuiModelsBlock({
   const totalLoaded = loadedEntries.length + loadedUnknownWithCat.length
   const hasLoadedInfo = currentlyLoaded !== null
 
+  const { t: t2 } = useT()
+
   return (
     <div className="pt-2 mt-2 border-t border-white/5 space-y-1.5">
       {/* === 已加载区块 === */}
       <div className="text-[10px] text-gray-500 uppercase tracking-wide">
         {hasLoadedInfo ? (
           <span className="text-gray-300">
-            🧠 ComfyUI 当前加载的模型 ({totalLoaded} 个 · 静态 {loadedStaticGb.toFixed(2)} GB)
+            🧠 {t2('queue.comfyLoadedModels')} ({totalLoaded} {t2('queue.processCount')} · {t2('queue.staticLoaded')} {loadedStaticGb.toFixed(2)} GB)
           </span>
         ) : (
-          <span className="text-warn">⚠ ComfyUI 加载状态未知 (无 history, 请先跑一个任务)</span>
+          <span className="text-warn">{t2('queue.comfyLoadedUnknown')}</span>
         )}
       </div>
 
       {!hasLoadedInfo && (
         <div className="text-[10px] text-gray-600 pl-1">
-          下方只列磁盘上的 H3 模型文件, 实际 GPU 上是否加载未知。
+          {t2('queue.comfyLoadedUnknownTip')}
         </div>
       )}
 
       {hasLoadedInfo && totalLoaded === 0 && (
         <div className="text-[10px] text-gray-600 pl-1">
-          最近任务未加载任何模型 ({currentlyLoaded?.filenames.length ?? 0} 个)
+          {t2('queue.comfyLoadedEmpty')} ({currentlyLoaded?.filenames.length ?? 0})
         </div>
       )}
 
@@ -794,10 +799,10 @@ function ComfyuiModelsBlock({
           <summary className="text-[10px] text-gray-500 uppercase tracking-wide pt-2 cursor-pointer list-none flex items-center justify-between hover:text-gray-400 select-none">
             <span className="flex items-center gap-1">
               <span className="inline-block transition-transform group-open:rotate-90 text-[8px]">▶</span>
-              磁盘 H3 模型 (未加载 · {notLoadedEntries.length} 个 · {notLoadedStaticGb.toFixed(2)} GB)
+              {t2('queue.notLoadedOnDisk', { n: notLoadedEntries.length, gb: notLoadedStaticGb.toFixed(2) })}
             </span>
             <span className="text-gray-600 text-[9px] normal-case font-normal">
-              {notLoadedEntries.length > 1 ? '点击展开/收起' : ''}
+              {notLoadedEntries.length > 1 ? t2('queue.clickExpand') : ''}
             </span>
           </summary>
 
@@ -827,17 +832,17 @@ function ComfyuiModelsBlock({
       {/* === ComfyUI 进程 VRAM 对比 === */}
       {comfyProcess && (
         <div className="pt-2 mt-1 border-t border-white/5 text-[10px] text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
-          <span>ComfyUI 进程 <span className="text-gray-400 font-mono">PID {comfyProcess.pid}</span>:</span>
+          <span>{t2('queue.comfyProcessPid')} <span className="text-gray-400 font-mono">{t2('queue.pid')} {comfyProcess.pid}</span>:</span>
           <span className="text-accent font-mono">{comfyProcess.used_memory_gb.toFixed(2)} GB</span>
           {loadedStaticGb > 0 ? (
             <span className="text-gray-600">
-              (静态加载 {loadedStaticGb.toFixed(2)} GB ·{' '}
+              ({t2('queue.staticLoad')} {loadedStaticGb.toFixed(2)} GB ·{' '}
               {comfyProcess.used_memory_gb > loadedStaticGb
-                ? `实际多 ${(comfyProcess.used_memory_gb - loadedStaticGb).toFixed(2)} GB = 运行时 / KV cache`
-                : `实际少 ${(loadedStaticGb - comfyProcess.used_memory_gb).toFixed(2)} GB = 共享显存`})
+                ? t2('queue.actualMore', { gb: (comfyProcess.used_memory_gb - loadedStaticGb).toFixed(2) })
+                : t2('queue.actualLess', { gb: (loadedStaticGb - comfyProcess.used_memory_gb).toFixed(2) })})
             </span>
           ) : hasLoadedInfo ? (
-            <span className="text-gray-600">(当前任务无 H3 静态模型)</span>
+            <span className="text-gray-600">{t2('queue.noStaticModel')}</span>
           ) : null}
         </div>
       )}
@@ -856,6 +861,7 @@ function ComfyuiModelsBlock({
  * - 鼠标 hover 显示时间戳和具体数值
  */
 function GpuHistoryChart({ totalGb }: { totalGb: number }) {
+  const { t } = useT()
   const [history, setHistory] = useState<GpuHistoryResp | null>(null)
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
@@ -886,9 +892,9 @@ function GpuHistoryChart({ totalGb }: { totalGb: number }) {
   return (
     <div className="bg-bg-card rounded-2xl p-4">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-xs text-gray-400">显存占用 · 过去 1 小时</div>
+        <div className="text-xs text-gray-400">{t('queue.vramHistoryTitle')}</div>
         <div className="text-xs text-gray-500 font-mono">
-          {hasData ? `${samples.length}/${maxSlots} 样本` : '采集中…'}
+          {hasData ? `${samples.length}/${maxSlots} ${t('queue.samplesLabel')}` : t('queue.collecting')}
         </div>
       </div>
 
@@ -896,7 +902,7 @@ function GpuHistoryChart({ totalGb }: { totalGb: number }) {
       <div className="relative h-20 bg-bg rounded-lg overflow-hidden">
         {!hasData ? (
           <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs">
-            等待采样 (5s 后第 1 根柱子)
+            {t('queue.waitingSample')}
           </div>
         ) : (
           <div className="absolute inset-0 flex items-end">
@@ -946,7 +952,7 @@ function GpuHistoryChart({ totalGb }: { totalGb: number }) {
             </span>
           </div>
         ) : hasData ? (
-          <div className="text-gray-600">悬停查看具体时间点的显存</div>
+          <div className="text-gray-600">{t('queue.hoverHint')}</div>
         ) : null}
       </div>
 
@@ -954,7 +960,7 @@ function GpuHistoryChart({ totalGb }: { totalGb: number }) {
       <div className="flex justify-between text-[10px] text-gray-600 mt-1 px-0.5">
         <span>-1h</span>
         <span>-30m</span>
-        <span>now</span>
+        <span>{t('queue.now')}</span>
       </div>
     </div>
   )
@@ -970,6 +976,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function TaskRow({ task, kind, queueIdx }: { task: any; kind: 'running' | 'pending'; queueIdx?: number }) {
+  const { t } = useT()
   return (
     <div className="bg-bg-card rounded-xl p-3 flex items-start gap-3">
       <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
@@ -980,7 +987,9 @@ function TaskRow({ task, kind, queueIdx }: { task: any; kind: 'running' | 'pendi
           {task.preview_prompt || '(no prompt text)'}
         </div>
         <div className="text-xs text-gray-500 mt-1">
-          {kind === 'pending' && queueIdx !== undefined && <span className="text-accent">第 {queueIdx} 位 · </span>}
+          {kind === 'pending' && queueIdx !== undefined && (
+            <span className="text-accent">{t('queue.position', { n: queueIdx })} · </span>
+          )}
           <span className="font-mono">{task.prompt_id?.slice(0, 8) ?? '…'}</span>
         </div>
       </div>
@@ -993,6 +1002,7 @@ function TaskRow({ task, kind, queueIdx }: { task: any; kind: 'running' | 'pendi
  * 因为 ComfyUI 的 progress 是 step-based (H3 Turbo 8 步),不是百分比
  */
 function RunningTaskRow({ task }: { task: any }) {
+  const { t } = useT()
   // task.executing_step 是 /queue 列表返回的当前正在跑的节点,作为辅助标识
   // 但是 step 进度只有 WS 才有 — 这里只显示 prompt 和节点标识
   // 真实 step 进度在 ProgressCard 里显示(那是 WS 订阅的)
@@ -1009,12 +1019,12 @@ function RunningTaskRow({ task }: { task: any }) {
           <div className="text-xs text-gray-500 mt-1">
             <span className="font-mono text-warn">{promptId}</span>
             {' · '}
-            <span>节点 {currentNode} 执行中</span>
+            <span>{t('queue.nodeExecute', { node: currentNode })}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-0.5">
-          <span className="text-[10px] text-gray-500 uppercase tracking-wide">详情</span>
-          <span className="text-xs text-accent">→ Generate Tab</span>
+          <span className="text-[10px] text-gray-500 uppercase tracking-wide">{t('queue.detail')}</span>
+          <span className="text-xs text-accent">{t('queue.toGenerateTab')}</span>
         </div>
       </div>
       {/* 加载中占位进度条 — 实际进度看 Generate Tab 的 ProgressCard */}

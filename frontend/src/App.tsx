@@ -1,13 +1,28 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { ActiveSubContext, type ActiveSubContextValue } from './lib/activeSub'
 import { subscribeProgress } from './lib/ws'
+import { useT } from './lib/i18n'
 import type { Submission } from './lib/api'
 
 type Tab = 'generate' | 'queue' | 'history'
 
+// 底部 Tab Bar 的 icon (emoji 不走 i18n, 保持常量)
+// Bug fix 2026-10-10: 之前用 Object.entries(t('tabs')) 动态遍历,
+// 在 authed=true 路径触发 "Cannot read properties of undefined (reading 'icon')"。
+// 原因: i18n 字典的 tabs 是任意键对象, 与这里 Record<Tab, ...> 的字面量类型没有编译期校验,
+//   Object.entries 跑出来的 key 不一定在 tabsKeys 里。改为: tab 顺序/key 用 TS 硬编码,
+//   文本走 i18n(动态), icon 走常量 — 三层互不干扰, TS 编译期 + runtime 都安全。
+const TAB_ORDER: readonly Tab[] = ['generate', 'queue', 'history'] as const
+const TAB_ICONS: Record<Tab, string> = {
+  generate: '✨',
+  queue: '⚡',
+  history: '🎬',
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('generate')
   const [authed, setAuthed] = useState<boolean>(false)
+  const { t, lang, toggle } = useT()
 
   // === 跨 Tab 共享的活跃 submission ===
   // App 层持 state, 通过 context 暴露给所有 Tab
@@ -118,11 +133,25 @@ export default function App() {
               className="h-9 w-auto"
             />
             <div>
-              <h1 className="text-base font-semibold leading-none">RTX Pro 6000</h1>
-              <p className="text-xs text-gray-500 mt-0.5">MiniMax H3</p>
+              <h1 className="text-base font-semibold leading-none">{t('header.title')}</h1>
+              <p className="text-xs text-gray-500 mt-0.5">{t('header.subtitle')}</p>
             </div>
           </div>
-          <ComfyHealthBadge />
+          <div className="flex items-center gap-3">
+            {/* 语言切换按钮 — 中 / EN,显示当前语言,click 切换 */}
+            <button
+              type="button"
+              onClick={toggle}
+              title="Switch language / 切换语言"
+              className="text-[10px] font-mono px-2 py-1 rounded-full border border-white/10 text-gray-400 hover:text-accent hover:border-accent/40 transition"
+              aria-label="Switch language"
+            >
+              <span className={lang === 'zh' ? 'text-accent font-semibold' : ''}>中</span>
+              <span className="mx-1 text-gray-600">/</span>
+              <span className={lang === 'en' ? 'text-accent font-semibold' : ''}>EN</span>
+            </button>
+            <ComfyHealthBadge />
+          </div>
         </div>
       </header>
 
@@ -136,12 +165,8 @@ export default function App() {
 
         {/* 版权页脚 — 所有 Tab 都共享, 跟随 main 内容自然滚到底部 */}
         <footer className="mt-12 pt-4 border-t border-white/5 text-center text-[10px] text-gray-500 leading-relaxed">
-          <div className="text-gray-400">
-            🔒 仅限个人学习测试使用 · 禁止传播、转发、二次分发、商业使用
-          </div>
-          <div className="mt-1 text-gray-600">
-            For personal study and testing only · No redistribution, republishing, or commercial use
-          </div>
+          <div className="text-gray-400">{t('footer.copyZh')}</div>
+          <div className="mt-1 text-gray-600">{t('footer.copyEn')}</div>
         </footer>
       </main>
 
@@ -149,16 +174,12 @@ export default function App() {
       {/* 中文主标签 + 英文小字副标签,方便英语用户快速识别 */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 bg-bg/95 backdrop-blur border-t border-white/5 safe-area-inset-bottom">
         <div className="max-w-3xl mx-auto grid grid-cols-3">
-          {[
-            { id: 'generate', label: '视频生成', en: 'Generate', icon: '✨' },
-            { id: 'queue', label: 'GPU状态', en: 'GPU Status', icon: '⚡' },
-            { id: 'history', label: '历史视频', en: 'History', icon: '🎬' },
-          ].map((t) => {
-            const active = tab === t.id
+          {TAB_ORDER.map((id) => {
+            const active = tab === id
             return (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id as Tab)}
+                key={id}
+                onClick={() => setTab(id)}
                 className={`relative py-2.5 flex flex-col items-center gap-0 text-xs transition ${
                   active
                     ? 'text-accent'
@@ -168,11 +189,11 @@ export default function App() {
                 {active && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-accent rounded-b" />
                 )}
-                <span className={`text-lg leading-none transition-transform ${active ? 'scale-110' : ''}`}>{t.icon}</span>
-                <span className={`font-medium leading-tight mt-0.5 ${active ? 'font-semibold' : ''}`}>{t.label}</span>
+                <span className={`text-lg leading-none transition-transform ${active ? 'scale-110' : ''}`}>{TAB_ICONS[id]}</span>
+                <span className={`font-medium leading-tight mt-0.5 ${active ? 'font-semibold' : ''}`}>{t(`tabs.${id}.main`)}</span>
                 <span className={`text-[10px] leading-tight ${
                   active ? 'text-accent/70' : 'text-gray-600'
-                }`}>{t.en}</span>
+                }`}>{t(`tabs.${id}.sub`)}</span>
               </button>
             )
           })}
@@ -190,6 +211,7 @@ export default function App() {
 //       这条路完全独立于 ComfyUI,RTX 活着就能拿到数据。
 // ComfyUI 健康度(绿色 = 可用 / 灰 = 不可用)独立显示,只影响圆点颜色。
 function ComfyHealthBadge() {
+  const { t } = useT()
   const [comfyOk, setComfyOk] = useState<boolean | null>(null)  // null=检测中
   const [vramUsed, setVramUsed] = useState<number | null>(null)
   const [vramTotal, setVramTotal] = useState<number | null>(null)
@@ -261,19 +283,19 @@ function ComfyHealthBadge() {
           </div>
           {/* 详细数字 */}
           <span className="font-mono text-gray-500 hidden lg:inline tabular-nums">
-            {vramUsed!.toFixed(0)}G / {vramTotal!.toFixed(0)}G 已用
+            {vramUsed!.toFixed(0)}G / {vramTotal!.toFixed(0)}G {t('health.vramUsed')}
           </span>
           {/* ComfyUI 状态 — 不可用时显文字,可用时静默 (避免噪音) */}
           {comfyOk === false && (
             <span className="text-[10px] text-gray-500 hidden sm:inline" title="ComfyUI 不可用, 但 GPU/进程数据走 SSH 仍可用">
-              · ComfyUI 离线
+              · {t('health.comfyOffline')}
             </span>
           )}
         </>
       ) : comfyOk === false ? (
-        <span className="text-err">离线</span>
+        <span className="text-err">{t('common.offline')}</span>
       ) : (
-        <span className="text-gray-500">检测中…</span>
+        <span className="text-gray-500">{t('common.detecting')}</span>
       )}
     </div>
   )

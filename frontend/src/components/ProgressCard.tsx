@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Submission } from '../lib/api'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
 
 type OutputFile = {
   filename?: string
@@ -19,6 +20,7 @@ export default function ProgressCard({
   promptText: string
   onReset?: () => void  // "再来一个"按钮回调 - 清空 activeSub 让用户提交新 prompt
 }) {
+  const { t } = useT()
   const pct = Math.round((sub.progress ?? 0) * 100)
   const isDone = sub.status === 'done'
   const isErr = sub.status === 'error'
@@ -113,16 +115,16 @@ export default function ProgressCard({
         <div className="flex items-center gap-2">
           <StatusDot status={sub.status} />
           <span className="text-sm font-medium capitalize">
-            {statusLabel(sub.status)}
+            {statusLabel(sub.status, t)}
           </span>
           {isRunning && remainingSec > 0 && (
             <span className="text-xs text-gray-500">
-              · 约 {remainingSec}s
+              · {t('progress.remaining', { n: remainingSec })}
             </span>
           )}
           {isDone && (
             <span className="text-xs text-ok">
-              · 用时 {elapsedLabel}
+              · {t('progress.took', { t: elapsedLabel })}
             </span>
           )}
         </div>
@@ -134,12 +136,12 @@ export default function ProgressCard({
       {/* === 真正生成时间 (开始 → 结束) === */}
       {isDone && submittedAtLabel && finishedAtLabel && (
         <div className="flex items-center gap-3 text-[10px] text-gray-500 px-1">
-          <span title="提交时间">
-            🕐 开始 <span className="text-gray-300 font-mono">{submittedAtLabel}</span>
+          <span title={t('progress.submittedTitle')}>
+            🕐 {t('progress.started')} <span className="text-gray-300 font-mono">{submittedAtLabel}</span>
           </span>
           <span className="text-gray-700">→</span>
-          <span title="完成时间">
-            完成 <span className="text-gray-300 font-mono">{finishedAtLabel}</span>
+          <span title={t('progress.finishedTitle')}>
+            {t('progress.finished')} <span className="text-gray-300 font-mono">{finishedAtLabel}</span>
           </span>
           {fileGenSec !== undefined && (
             <span className="ml-auto text-ok font-mono">
@@ -159,7 +161,7 @@ export default function ProgressCard({
         <div className="space-y-2">
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-wide">H3 · 8 步 Turbo</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wide">{t('progress.h3Turbo')}</div>
               <div className="flex items-baseline gap-1">
                 <span className={`text-3xl font-bold font-mono ${
                   isDone ? 'text-ok' : 'text-accent'
@@ -171,7 +173,7 @@ export default function ProgressCard({
                 </span>
               </div>
               <div className="text-xs text-gray-400 mt-0.5">
-                {isDone ? '✅ 已完成' : STEP_LABELS[displayStep]}
+                {isDone ? t('progress.completed') : t(`progress.steps.${displayStep}`)}
               </div>
             </div>
           </div>
@@ -186,7 +188,7 @@ export default function ProgressCard({
                 <div
                   key={i}
                   className={`h-2 rounded-full transition-all ${cls}`}
-                  title={`步骤 ${i + 1}: ${STEP_LABELS[i]}`}
+                  title={t('progress.stepLabel', { n: i + 1 }) + ': ' + t(`progress.steps.${i}`)}
                 />
               )
             })}
@@ -201,7 +203,7 @@ export default function ProgressCard({
 
       {/* === 排队提示 === */}
       {sub.status === 'submitted' && (
-        <p className="text-xs text-gray-500">⏳ 等待 ComfyUI 启动这个任务…</p>
+        <p className="text-xs text-gray-500">{t('progress.waitingComfy')}</p>
       )}
 
       {/* === 完成 — 视频预览 (控件禁用) + 下载 === */}
@@ -215,28 +217,28 @@ export default function ProgressCard({
                   href={finalVideoUrl}
                   download
                   className="flex-1 text-center text-xs text-gray-300 hover:text-accent transition py-2 px-3 rounded-lg bg-bg hover:bg-bg-hover flex flex-col items-center leading-tight"
-                  title="下载 MP4 到本地"
+                  title={t('progress.downloadTitle')}
                 >
-                  <span>⬇ 下载视频</span>
-                  <span className="text-[10px] text-gray-600">Download MP4</span>
+                  <span>⬇ {t('progress.downloadVideo').replace('⬇ ', '')}</span>
+                  <span className="text-[10px] text-gray-600">{t('progress.downloadMp4')}</span>
                 </a>
                 <a
                   href={finalVideoUrl}
                   target="_blank"
                   rel="noopener"
                   className="flex-1 text-center text-xs text-gray-400 hover:text-accent transition py-2 px-3 rounded-lg bg-bg hover:bg-bg-hover flex flex-col items-center leading-tight"
-                  title="在新窗口打开视频"
+                  title={t('progress.openTitle')}
                 >
-                  <span>↗ 打开预览</span>
-                  <span className="text-[10px] text-gray-600">Open in new tab</span>
+                  <span>↗ {t('progress.openPreview').replace('↗ ', '')}</span>
+                  <span className="text-[10px] text-gray-600">{t('progress.openInTab')}</span>
                 </a>
                 {onReset && (
                   <button
                     onClick={onReset}
                     className="flex-1 text-center text-sm font-medium text-white bg-accent hover:bg-accent-glow transition py-2 px-3 rounded-lg flex flex-col items-center leading-tight"
                   >
-                    <span>✨ 再来一个</span>
-                    <span className="text-[10px] font-normal opacity-70">Generate another</span>
+                    <span>✨ {t('progress.generateAnother').replace('✨ ', '')}</span>
+                    <span className="text-[10px] font-normal opacity-70">{t('progress.generateAnotherEn')}</span>
                   </button>
                 )}
               </div>
@@ -244,13 +246,13 @@ export default function ProgressCard({
           ) : (
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-              正在准备视频预览…
+              {t('progress.preparingVideo')}
               {onReset && (
                 <button
                   onClick={onReset}
                   className="ml-auto text-xs text-gray-500 hover:text-accent underline"
                 >
-                  ↶ 重新开始
+                  {t('progress.restart')}
                 </button>
               )}
             </div>
@@ -261,8 +263,8 @@ export default function ProgressCard({
             target="_self"
             className="block text-center text-xs text-gray-500 hover:text-gray-300 transition pt-1"
           >
-            全部视频看 History Tab ↗
-            <span className="block text-[10px] text-gray-600">View all in History Tab</span>
+            {t('progress.viewAllHistory')}
+            <span className="block text-[10px] text-gray-600">{t('progress.viewAllHistoryEn')}</span>
           </a>
         </div>
       )}
@@ -270,17 +272,9 @@ export default function ProgressCard({
   )
 }
 
-// === H3 8 步 Turbo 节点标签 (按 workflow 顺序, 跟 ComfyUI 节点对应)
-const STEP_LABELS = [
-  '① 加载模型',     // 0
-  '② 编码 Prompt',  // 1
-  '③ 准备 Latent',  // 2
-  '④ 加载 LoRA',    // 3
-  '⑤ Sigma Shift',  // 4
-  '⑥ 调度采样',     // 5
-  '⑦ 8 步采样',     // 6
-  '⑧ VAE 解码 + 保存', // 7
-]
+// === H3 8 步 Turbo 节点标签 (字典走 t(`progress.steps.${i}`), 此处保留作为 fallback)
+// 当前已完全用 i18n, 留空数组仅占位避免编译错
+const STEP_LABELS: string[] = []
 
 /** 视频预览组件 — 禁用原生控件, 自绘播放/暂停按钮 + 静音切换
  *  - 默认显示 cover.jpg 静态图, 用户点 ▶ 才加载视频
@@ -289,6 +283,7 @@ const STEP_LABELS = [
  *  - oncontextmenu preventDefault 关掉"另存为"
  */
 function VideoPreview({ src }: { src: string }) {
+  const { t } = useT()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)  // 默认不播, 等用户点
   const [muted, setMuted] = useState(true)
@@ -357,7 +352,7 @@ function VideoPreview({ src }: { src: string }) {
           {/* cover 缺失兜底 */}
           {!coverOk && (
             <div className="absolute inset-0 flex items-center justify-center text-gray-600">
-              <span className="text-xs">🎬 无封面</span>
+              <span className="text-xs">{t('progress.noCover')}</span>
             </div>
           )}
           {/* 中央 ▶ 按钮 */}
@@ -365,7 +360,7 @@ function VideoPreview({ src }: { src: string }) {
             type="button"
             onClick={startPlay}
             className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-white/85 hover:bg-white text-black flex items-center justify-center text-2xl shadow-2xl hover:scale-105 transition z-10"
-            title="播放"
+            title={t('progress.playTitle')}
           >
             ▶
           </button>
@@ -402,14 +397,14 @@ function VideoPreview({ src }: { src: string }) {
           <button
             onClick={togglePlay}
             className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white text-sm flex items-center justify-center backdrop-blur"
-            title="暂停"
+            title={t('progress.pauseTitle')}
           >
             ⏸
           </button>
           <button
             onClick={toggleMute}
             className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white text-sm flex items-center justify-center backdrop-blur"
-            title={muted ? '取消静音' : '静音'}
+            title={muted ? t('progress.unmuteTitle') : t('progress.muteTitle')}
           >
             {muted ? '🔇' : '🔊'}
           </button>
@@ -417,7 +412,7 @@ function VideoPreview({ src }: { src: string }) {
       )}
       {/* === 顶部标签 === */}
       <div className="absolute top-2 left-2 text-[10px] text-white/60 bg-black/40 px-2 py-0.5 rounded backdrop-blur pointer-events-none">
-        PREVIEW · 双击全屏
+        {t('progress.previewLabel')}
       </div>
     </div>
   )
@@ -434,12 +429,12 @@ function StatusDot({ status }: { status: Submission['status'] }) {
   return <span className={`w-2.5 h-2.5 rounded-full ${cls}`} />
 }
 
-function statusLabel(s: Submission['status']) {
+function statusLabel(s: Submission['status'], t: (p: string) => string) {
   return {
-    pending: '排队中',
-    submitted: '已提交',
-    running: '生成中',
-    done: '完成',
-    error: '失败',
+    pending: t('progress.statusPending'),
+    submitted: t('progress.statusSubmitted'),
+    running: t('progress.statusRunning'),
+    done: t('progress.statusDone'),
+    error: t('progress.statusError'),
   }[s]
 }

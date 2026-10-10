@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { api, type PromptItem, type CategoryStat, type Submission } from '../lib/api'
 import { useActiveSub } from '../lib/activeSub'
+import { useT } from '../lib/i18n'
 import ProgressCard from '../components/ProgressCard'
 
 /** ProgressCard 包装器 — 出现时自动滚动到视野内 (用户要求"在第一页最下面看到生成过程") */
@@ -141,6 +142,7 @@ async function processRefImage(
 }
 
 export default function GenerateTab() {
+  const { t } = useT()
   const [promptText, setPromptText] = useState('')
   const [duration, setDuration] = useState(5)
   // 固定 480p: 720p / 1080p 在 远端 ComfyUI 上从未真跑过样本 (history 全 832x480),
@@ -222,7 +224,7 @@ export default function GenerateTab() {
   const handleRefFile = async (file: File) => {
     setRefImageError(null)
     if (!file.type.startsWith('image/')) {
-      setRefImageError('不是图片文件')
+      setRefImageError(t('generate.refNotImage'))
       return
     }
     setRefImageUploading(true)
@@ -250,7 +252,7 @@ export default function GenerateTab() {
       // 自动 prepend <Picture 1> 标签 (若还没 prepend 过)
       setPromptText((prev) => (prev.startsWith(REF_TAG) ? prev : REF_TAG + prev))
     } catch (e: any) {
-      setRefImageError(`参考图上传失败: ${e.message ?? '未知错误'}`)
+      setRefImageError(`${t('generate.refUploadFail')}: ${e.message ?? t('common.none')}`)
       setRefImageServerPath(null)
       setRefImageDataURL(null)
       setRefImageFilename(null)
@@ -274,7 +276,7 @@ export default function GenerateTab() {
     setExpandError(null)
     const p = promptText.trim()
     if (!p) {
-      setExpandError('请先输入 prompt')
+      setExpandError(t('generate.expandEmpty'))
       return
     }
     setExpanding(true)
@@ -291,13 +293,13 @@ export default function GenerateTab() {
       setPromptText(result.prompt)
       setShowStructured(true)
       if (result.vision_error) {
-        setExpandError(`参考图识别失败: ${result.vision_error}, 已用 T2VA 降级`)
+        setExpandError(`${t('generate.expandVisionFail')}: ${result.vision_error}`)
       }
       if (result.warning) {
         setExpandError(result.warning)
       }
     } catch (e: any) {
-      setExpandError(`扩写失败: ${e?.message || e}`)
+      setExpandError(`${t('generate.expandFail')}: ${e?.message || e}`)
     } finally {
       setExpanding(false)
     }
@@ -315,12 +317,12 @@ export default function GenerateTab() {
   const handleSubmit = async () => {
     setPromptErr(null)
     if (!promptText.trim()) {
-      setPromptErr('请输入 prompt')
+      setPromptErr(t('generate.promptEmpty'))
       return
     }
     // 有参考图但还没上传成功 → 不允许提交
     if (refImageDataURL && !refImageServerPath) {
-      setPromptErr('参考图还没上传完成')
+      setPromptErr(t('generate.promptMissingRef'))
       return
     }
     setSubmitting(true)
@@ -334,7 +336,7 @@ export default function GenerateTab() {
       // App 层 Context: setActiveSub 内部会 subscribeProgress (一次连接多 Tab 共享)
       setActiveSub(sub, promptText.trim())
     } catch (e: any) {
-      setPromptErr(e.message ?? '提交失败')
+      setPromptErr(e.message ?? t('generate.submitFail'))
     } finally {
       setSubmitting(false)
     }
@@ -344,7 +346,7 @@ export default function GenerateTab() {
     <div className="space-y-5 animate-slide-up">
       {/* 标题 — 苹果范儿：简洁一行 */}
       <h2 className="text-2xl font-semibold text-white tracking-tight">
-        视频生成
+        {t('generate.title')}
       </h2>
 
       {/* Prompt 输入框 */}
@@ -364,7 +366,7 @@ export default function GenerateTab() {
               }
             }
           }}
-          placeholder="输入 Input Prompt"
+          placeholder={t('generate.promptPlaceholder')}
           rows={7}
           className="w-full bg-bg rounded-lg p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-gray-600 min-h-[140px] max-h-96"
         />
@@ -382,8 +384,8 @@ export default function GenerateTab() {
 
           {/* 参考图 chip — 无图 = 上传; 有图 = 已上传 + 移除 */}
           {!refImageDataURL ? (
-            <label className="chip-base cursor-pointer" title="上传参考图 (Ref2VA 模式)">
-              <span>📎 参考 Ref</span>
+            <label className="chip-base cursor-pointer" title={t('generate.refAttach')}>
+              <span>{t('generate.refAttach')}</span>
               <input
                 type="file"
                 accept="image/*"
@@ -412,22 +414,22 @@ export default function GenerateTab() {
                 }
               >
                 {refImageError ? (
-                  <>⚠ 失败</>
+                  <>{t('generate.refFailed')}</>
                 ) : refImageUploading ? (
                   <>
                     <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                    {refImageCompression ?? '上传中'}
+                    {refImageCompression ?? t('generate.refUploading')}
                   </>
                 ) : (
                   <>
-                    ✓ {refImageCompression ?? '参考图'}
+                    ✓ {refImageCompression ?? t('generate.refSuccess')}
                   </>
                 )}
               </span>
               <button
                 onClick={handleRemoveRef}
                 className="chip-base !px-2"
-                title="移除参考图"
+                title={t('generate.refRemove')}
               >
                 ✕
               </button>
@@ -437,10 +439,10 @@ export default function GenerateTab() {
           {/* 库选择 chip */}
           <button
             onClick={() => setShowLibrary(s => !s)}
-            title="从库选 prompt"
+            title={t('generate.libraryBtn')}
             className={`chip-base ${showLibrary ? '!border-accent/40 !text-accent !bg-accent/10' : ''}`}
           >
-            <span>📚 Prompt 库</span>
+            <span>{t('generate.libraryBtn')}</span>
           </button>
         </div>
 
@@ -448,7 +450,7 @@ export default function GenerateTab() {
         <div className="flex items-center gap-2 flex-wrap">
           {/* 库展开时的提示 (空格, 让扩写/生成 GO 视觉对齐) */}
           {showLibrary && (
-            <span className="text-[10px] text-gray-500">↓ 从库里选 prompt</span>
+            <span className="text-[10px] text-gray-500">{t('generate.libraryPickHint')}</span>
           )}
 
           {/* 把 actions 推到右边 (空状态时不留白) */}
@@ -462,16 +464,16 @@ export default function GenerateTab() {
               expandedMode ? '!border-accent/40 !text-accent !bg-accent/10' : ''
             }`}
             title={refImageDataURL
-              ? '使用 H3 Ref2VA 6 段模板扩写 — 8-15 秒'
-              : '使用 H3 T2VA 3 段模板扩写 — 5-10 秒'}
+              ? t('generate.expandHintRef2VA')
+              : t('generate.expandHintT2VA')}
           >
             {expanding ? (
               <>
                 <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                扩写中…
+                {t('generate.expanding')}
               </>
             ) : (
-              <>✨ 扩写</>
+              <>{t('generate.expand')}</>
             )}
           </button>
 
@@ -482,7 +484,7 @@ export default function GenerateTab() {
             className="inline-flex items-center gap-1.5 bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:bg-bg-card disabled:text-gray-500 text-white font-medium px-4 py-1.5 rounded-lg text-sm shadow-md shadow-accent/30 disabled:shadow-none disabled:cursor-not-allowed transition"
           >
             <span>🚀</span>
-            <span>{submitting ? '提交中…' : '生成 GO'}</span>
+            <span>{submitting ? t('generate.submitting') : t('generate.go')}</span>
           </button>
         </div>
 
@@ -497,7 +499,7 @@ export default function GenerateTab() {
             onClick={() => setShowStructured(s => !s)}
             className="text-xs text-accent hover:text-accent-glow transition flex items-center gap-1"
           >
-            {showStructured ? '收起 prompt 结构 ▲' : '📋 查看 prompt 详情 ▼'}
+            {showStructured ? t('generate.hideStructure') : t('generate.viewStructure')}
           </button>
         )}
 
@@ -509,11 +511,11 @@ export default function GenerateTab() {
         <div className="bg-bg-card rounded-2xl p-4 space-y-3 animate-slide-up">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-accent font-medium">
-              📋 Prompt 结构详情
+              {t('generate.structureTitle')}
             </span>
             <span className="text-xs text-gray-500">
-              {expandedMode === 'Ref2VA' ? 'Ref2VA · 6 段' : 'T2VA · 3 段'}
-              · 已自动写入上方 textarea
+              {expandedMode === 'Ref2VA' ? t('generate.modeRef2VA') : t('generate.modeT2VA')}
+              · {t('generate.structureWritten')}
             </span>
             {imageDescription && (
               <span className="text-[10px] text-gray-600 ml-auto" title={imageDescription}>
@@ -535,7 +537,7 @@ export default function GenerateTab() {
           ))}
 
           <p className="text-[10px] text-gray-600">
-            💡 这些段已合并写入上方 textarea, 直接生成即可, 也可手动修改后再生成
+            {t('generate.structureFooter')}
           </p>
         </div>
       )}
@@ -547,7 +549,7 @@ export default function GenerateTab() {
             <input
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="搜索库内 prompt 标题... / Search prompts"
+              placeholder={t('generate.searchPlaceholder')}
               className="flex-1 bg-bg rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
             />
             <span className="text-xs text-gray-500">{filteredPrompts.length}</span>
@@ -561,7 +563,7 @@ export default function GenerateTab() {
                 selectedCat === 'all' ? 'bg-accent text-white' : 'bg-bg text-gray-400'
               }`}
             >
-              All
+              {t('common.all')}
             </button>
             {categories.map(c => (
               <button
@@ -579,9 +581,9 @@ export default function GenerateTab() {
           {/* Prompt 列表 */}
           <div className="max-h-80 overflow-y-auto space-y-1">
             {loadingPrompts ? (
-              <div className="text-center text-gray-500 text-sm py-4">加载中…</div>
+              <div className="text-center text-gray-500 text-sm py-4">{t('common.loading')}</div>
             ) : filteredPrompts.length === 0 ? (
-              <div className="text-center text-gray-500 text-sm py-4">无匹配</div>
+              <div className="text-center text-gray-500 text-sm py-4">{t('generate.noMatch')}</div>
             ) : filteredPrompts.map(p => (
               <button
                 key={p.slug}

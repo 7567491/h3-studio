@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useT } from '../lib/i18n'
 
 async function sha256(text: string): Promise<string> {
   const buf = new TextEncoder().encode(text)
@@ -30,6 +31,7 @@ interface PassGateProps {
 }
 
 export default function PassGate({ onSuccess }: PassGateProps) {
+  const { t } = useT()
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
@@ -56,10 +58,10 @@ export default function PassGate({ onSuccess }: PassGateProps) {
         onSuccess()
       } else {
         localStorage.removeItem(STORAGE_KEY)
-        setError('口令已变更,请重新输入')
+        setError(t('passgate.errChanged'))
       }
     } catch (e: any) {
-      setError(`网络错误: ${e.message}`)
+      setError(`${t('passgate.errNetwork')}: ${e.message}`)
     } finally {
       setChecking(false)
     }
@@ -68,7 +70,7 @@ export default function PassGate({ onSuccess }: PassGateProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim()) {
-      setError('请输入口令')
+      setError(t('passgate.errEmpty'))
       return
     }
     const hash = await sha256(input)
@@ -78,7 +80,7 @@ export default function PassGate({ onSuccess }: PassGateProps) {
   }
 
   function handleForgot() {
-    if (confirm('清除本地记住的口令?下次需要重新输入。')) {
+    if (confirm(t('passgate.forgotConfirm'))) {
       localStorage.removeItem(STORAGE_KEY)
       setError(null)
     }
@@ -93,9 +95,9 @@ export default function PassGate({ onSuccess }: PassGateProps) {
             H3
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold">H3 Video Studio</h1>
-            <p className="text-xs text-gray-500 mt-1">输入访问口令</p>
-            <p className="text-[10px] text-gray-600 mt-0.5">Enter access password</p>
+            <h1 className="text-xl font-bold">{t('passgate.title')}</h1>
+            <p className="text-xs text-gray-500 mt-1">{t('passgate.subtitle')}</p>
+            <p className="text-[10px] text-gray-600 mt-0.5">{t('passgate.subtitleEn')}</p>
           </div>
         </div>
 
@@ -104,7 +106,7 @@ export default function PassGate({ onSuccess }: PassGateProps) {
             type="password"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="访问口令 / Password"
+            placeholder={t('passgate.placeholder')}
             autoFocus
             disabled={checking}
             className="w-full bg-bg rounded-xl px-4 py-3 text-center text-base font-mono focus:outline-none focus:ring-2 focus:ring-accent/50 border border-white/10 disabled:opacity-50"
@@ -115,9 +117,9 @@ export default function PassGate({ onSuccess }: PassGateProps) {
             disabled={checking || !input.trim()}
             className="w-full bg-accent hover:bg-accent-glow disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-2.5 rounded-xl transition flex flex-col items-center leading-tight"
           >
-            <span>{checking ? '验证中…' : '进入 →'}</span>
+            <span>{checking ? t('passgate.verifying') : t('passgate.enter')}</span>
             <span className="text-[10px] font-normal opacity-70">
-              {checking ? 'Verifying…' : 'Enter'}
+              {checking ? t('passgate.verifyingEn') : t('passgate.enterEn')}
             </span>
           </button>
 
@@ -132,19 +134,15 @@ export default function PassGate({ onSuccess }: PassGateProps) {
             onClick={handleForgot}
             className="text-xs text-gray-500 hover:text-gray-300 transition flex flex-col items-center w-full leading-tight"
           >
-            <span>忘记口令?清除本地记录</span>
-            <span className="text-[10px] text-gray-600">Forgot? Clear saved password</span>
+            <span>{t('passgate.forgot')}</span>
+            <span className="text-[10px] text-gray-600">{t('passgate.forgotEn')}</span>
           </button>
         </div>
 
         {/* 版权声明 — 用户首次进来就能看到 */}
         <div className="pt-3 border-t border-white/5 text-center text-[10px] text-gray-500 leading-relaxed">
-          <div className="text-gray-400">
-            🔒 仅限个人学习测试使用 · 禁止传播、转发、二次分发、商业使用
-          </div>
-          <div className="mt-1 text-gray-600">
-            For personal study and testing only · No redistribution, republishing, or commercial use
-          </div>
+          <div className="text-gray-400">{t('footer.copyZh')}</div>
+          <div className="mt-1 text-gray-600">{t('footer.copyEn')}</div>
         </div>
       </div>
     </div>

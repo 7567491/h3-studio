@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { api, type HistoryItem } from '../lib/api'
+import { useT } from '../lib/i18n'
 
 /**
  * 历史视频 Tab - 自渲染极简画廊
@@ -14,6 +15,7 @@ import { api, type HistoryItem } from '../lib/api'
  * - PC (>=640px): 3-4 列,hover 视频预览
  */
 export default function HistoryTab() {
+  const { t } = useT()
   const [items, setItems] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -28,8 +30,8 @@ export default function HistoryTab() {
   if (loading) {
     return (
       <div className="animate-slide-up">
-        <h2 className="text-2xl font-bold mb-3">历史视频</h2>
-        <div className="text-center text-gray-500 py-12">加载中…</div>
+        <h2 className="text-2xl font-bold mb-3">{t('history.title')}</h2>
+        <div className="text-center text-gray-500 py-12">{t('common.loading')}</div>
       </div>
     )
   }
@@ -37,7 +39,7 @@ export default function HistoryTab() {
   if (err) {
     return (
       <div className="animate-slide-up">
-        <h2 className="text-2xl font-bold mb-3">历史视频</h2>
+        <h2 className="text-2xl font-bold mb-3">{t('history.title')}</h2>
         <div className="bg-err/10 border border-err/30 rounded-2xl p-4 text-err text-sm">
           ⚠ {err}
         </div>
@@ -49,9 +51,8 @@ export default function HistoryTab() {
     <div className="animate-slide-up">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-2xl font-bold">历史视频</h2>
-          <p className="text-xs text-gray-500 mt-1">{items.length} 个视频 · 实时同步</p>
-          <p className="text-[10px] text-gray-600">History · {items.length} videos, live</p>
+          <h2 className="text-2xl font-bold">{t('history.title')}</h2>
+          <p className="text-xs text-gray-500 mt-1">{items.length} {t('history.count')}</p>
         </div>
         {/*
           完整画廊链接 — 默认隐藏 (clone 后用户自己配置 VITE_GALLERY_URL)。
@@ -64,8 +65,7 @@ export default function HistoryTab() {
             rel="noopener"
             className="text-xs text-gray-500 hover:text-accent transition whitespace-nowrap flex flex-col items-end leading-tight"
           >
-            <span>完整画廊 ↗</span>
-            <span className="text-[10px] text-gray-600">Full gallery</span>
+            <span>{t('history.fullGallery')}</span>
           </a>
         ) : null}
       </div>
@@ -91,7 +91,7 @@ export default function HistoryTab() {
       {items.length === 0 && (
         <div className="text-center text-gray-500 py-12">
           <div className="text-4xl mb-2">🎬</div>
-          <div>暂无视频</div>
+          <div>{t('history.empty')}</div>
         </div>
       )}
     </div>
@@ -106,6 +106,7 @@ export default function HistoryTab() {
  * - cover.jpg 仅作 poster (视频加载前的占位图)
  */
 function VideoCard({ v, onDeleted }: { v: HistoryItem; onDeleted: (slug: string) => void }) {
+  const { t } = useT()
   const [modalOpen, setModalOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -121,7 +122,7 @@ function VideoCard({ v, onDeleted }: { v: HistoryItem; onDeleted: (slug: string)
       setDeleteOpen(false)
       onDeleted(v.slug)  // 通知父组件从列表里移除
     } catch (e: any) {
-      setDeleteErr(e.message ?? '隐藏失败')
+      setDeleteErr(e.message ?? t('history.hideFailed'))
     } finally {
       setDeleting(false)
     }
@@ -151,7 +152,7 @@ function VideoCard({ v, onDeleted }: { v: HistoryItem; onDeleted: (slug: string)
               className="absolute top-1 right-1 bg-accent/80 text-white text-[10px] px-1.5 py-0.5 rounded pointer-events-none"
               title={`参考图: ${v.meta.ref_image}`}
             >
-              📌 ref
+              {t('history.refBadge')}
             </span>
           )}
           {/* 时长角标 */}
@@ -175,7 +176,7 @@ function VideoCard({ v, onDeleted }: { v: HistoryItem; onDeleted: (slug: string)
               setDeleteOpen(true)
             }}
             className="absolute bottom-1 left-1 w-7 h-7 rounded-full bg-black/60 hover:bg-warn text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition backdrop-blur"
-            title="隐藏视频 (前端不再显示)"
+            title={t('history.hideVideo')}
           >
             🙈
           </button>
@@ -237,6 +238,7 @@ function DeleteConfirmModal({
   onConfirm: () => void
   onCancel: () => void
 }) {
+  const { t } = useT()
   // ESC 关闭
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -260,13 +262,13 @@ function DeleteConfirmModal({
             🙈
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-medium text-white">隐藏视频?</h3>
-            <p className="text-xs text-gray-500 mt-0.5">前端不再显示 · 文件保留在服务器</p>
+            <h3 className="text-base font-medium text-white">{t('history.hideConfirmTitle')}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{t('history.hideConfirmDesc')}</p>
           </div>
         </div>
 
         <div className="text-sm text-gray-300 bg-bg rounded-lg p-3 space-y-1">
-          <div className="text-xs text-gray-500 mb-1">要隐藏的视频:</div>
+          <div className="text-xs text-gray-500 mb-1">{t('history.hideTarget')}</div>
           <div className="truncate font-medium">{v.title}</div>
           <div className="text-xs text-gray-500 font-mono">{v.filename}</div>
           <div className="text-xs text-gray-500">
@@ -276,8 +278,7 @@ function DeleteConfirmModal({
         </div>
 
         <div className="text-xs text-gray-500 bg-warn/5 border border-warn/20 rounded-lg p-2 leading-relaxed">
-          💡 文件保留在服务器磁盘上, 仅从前端列表中移除。
-          如果以后需要, SSH 到服务器手动编辑 .meta.json 删除 <code className="text-warn">hidden</code> 字段可恢复显示。
+          💡 {t('history.hideTip')}
         </div>
 
         {error && (
@@ -293,7 +294,7 @@ function DeleteConfirmModal({
             disabled={deleting}
             className="flex-1 text-sm text-gray-300 hover:text-white bg-bg hover:bg-bg-hover border border-white/10 transition py-2 px-3 rounded-lg disabled:opacity-50"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -304,10 +305,10 @@ function DeleteConfirmModal({
             {deleting ? (
               <>
                 <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                隐藏中…
+                {t('history.hideInProgress')}
               </>
             ) : (
-              <>🙈 确认隐藏</>
+              <>{t('history.hideConfirm')}</>
             )}
           </button>
         </div>
@@ -318,6 +319,7 @@ function DeleteConfirmModal({
 
 /** 视频大预览 modal — 包含视频播放器 + 元数据 + 下载按钮 */
 function VideoModal({ v, onClose }: { v: HistoryItem; onClose: () => void }) {
+  const { t } = useT()
   // ESC 关闭
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -342,7 +344,7 @@ function VideoModal({ v, onClose }: { v: HistoryItem; onClose: () => void }) {
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-bg hover:bg-bg-hover text-gray-300 hover:text-white flex items-center justify-center text-lg"
-            title="关闭 (ESC)"
+            title={t('common.close')}
           >
             ✕
           </button>
@@ -359,11 +361,11 @@ function VideoModal({ v, onClose }: { v: HistoryItem; onClose: () => void }) {
           {v.meta?.submitted_at_iso && v.meta?.finished_at_iso && (
             <div className="text-gray-400 text-xs space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-gray-500">🕐 提交:</span>
+                <span className="text-gray-500">{t('history.submittedAt')}</span>
                 <span className="font-mono text-gray-300">{v.meta.submitted_at_iso}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-gray-500">✅ 完成:</span>
+                <span className="text-gray-500">{t('history.finishedAt')}</span>
                 <span className="font-mono text-gray-300">{v.meta.finished_at_iso}</span>
                 {v.meta.generation_sec != null && (
                   <span className="ml-auto text-ok font-mono">⏱ {v.meta.generation_sec}s</span>
@@ -376,7 +378,7 @@ function VideoModal({ v, onClose }: { v: HistoryItem; onClose: () => void }) {
           {v.meta?.prompt && (
             <details className="text-xs">
               <summary className="text-gray-400 cursor-pointer hover:text-gray-300">
-                📝 查看 prompt
+                {t('history.viewPrompt')}
               </summary>
               <p className="mt-2 text-gray-300 bg-bg rounded-lg p-3 max-h-40 overflow-y-auto leading-relaxed">
                 {v.meta.prompt}
@@ -391,8 +393,8 @@ function VideoModal({ v, onClose }: { v: HistoryItem; onClose: () => void }) {
               download
               className="flex-1 text-center text-xs text-gray-300 hover:text-accent transition py-2 px-3 rounded-lg bg-bg hover:bg-bg-hover flex flex-col items-center leading-tight"
             >
-              <span>⬇ 下载视频</span>
-              <span className="text-[10px] text-gray-600">Download MP4</span>
+              <span>⬇ {t('history.downloadVideo').replace('⬇ ', '')}</span>
+              <span className="text-[10px] text-gray-600">{t('history.downloadMp4')}</span>
             </a>
             <a
               href={v.web_path}
@@ -400,8 +402,8 @@ function VideoModal({ v, onClose }: { v: HistoryItem; onClose: () => void }) {
               rel="noopener"
               className="flex-1 text-center text-xs text-gray-400 hover:text-accent transition py-2 px-3 rounded-lg bg-bg hover:bg-bg-hover flex flex-col items-center leading-tight"
             >
-              <span>↗ 新窗口打开</span>
-              <span className="text-[10px] text-gray-600">Open in tab</span>
+              <span>↗ {t('history.openNewTab').replace('↗ ', '')}</span>
+              <span className="text-[10px] text-gray-600">{t('history.openInTab')}</span>
             </a>
           </div>
 
@@ -420,6 +422,7 @@ function VideoModal({ v, onClose }: { v: HistoryItem; onClose: () => void }) {
  *  - cover.jpg 缺失 → 显示"无封面"占位 + ▶ 按钮 (点照样能播视频)
  */
 function VideoPreviewInModal({ webPath, title }: { webPath: string; title: string }) {
+  const { t } = useT()
   const [playing, setPlaying] = useState(false)
   const [coverOk, setCoverOk] = useState(true)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -450,7 +453,7 @@ function VideoPreviewInModal({ webPath, title }: { webPath: string; title: strin
           {!coverOk && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
               <div className="text-5xl mb-2">🎬</div>
-              <div className="text-xs">无封面预览</div>
+              <div className="text-xs">{t('history.noCover')}</div>
             </div>
           )}
           {/* 中央 ▶ 播放按钮 (无黑色遮罩 — cover 已够暗, 不需要再遮) */}
@@ -458,7 +461,7 @@ function VideoPreviewInModal({ webPath, title }: { webPath: string; title: strin
             type="button"
             onClick={startPlay}
             className="relative z-10 w-20 h-20 rounded-full bg-white/85 hover:bg-white text-black flex items-center justify-center text-3xl shadow-2xl hover:scale-105 transition"
-            title="播放视频"
+            title={t('history.playVideo')}
           >
             ▶
           </button>
