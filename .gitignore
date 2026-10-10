@@ -71,3 +71,8 @@ nohup.out
 # Submitted prompt artifacts (git-ignored by default; see .env overrides)
 /uploads/
 /backend/uploads/
+# === Jack 个人稿件 (2026-10-10 移出仓根到 /home/hermes/data/wall-street/) ===
+# 防复发: 仓根不应再出现小说/笔记草稿
+华强北之狼*
+Wall_Street_of_HuaQiangBei*
+电影改编经验.md
