@@ -47,6 +47,8 @@ class Submission:
     # 参考图 (subfolder/name, 例如 "h3studio/abc123.jpg"); None = 纯文生
     # History Tab 用这个区分带 ref vs 纯文生的视频
     ref_image: Optional[str] = None
+    # v6 多张 ref (REF hybrid 1-9 张), 优先于 ref_image
+    ref_images: Optional[list[str]] = None
     # 进度事件订阅队列,WS endpoint 会 listen
     event_queue: asyncio.Queue = field(default_factory=asyncio.Queue)
 
@@ -127,6 +129,7 @@ class SubmitManager:
         width: Optional[int] = None,
         height: Optional[int] = None,
         ref_image: Optional[str] = None,
+        ref_images: Optional[list[str]] = None,
         client_id: Optional[str] = None,
     ) -> Submission:
         """用户提交 prompt。返回 Submission(含 submission_id)。
@@ -152,15 +155,18 @@ class SubmitManager:
             client_id=client_id,
             submitter=submitter,
             ref_image=ref_image,
+            ref_images=ref_images,
         )
 
         async with self._lock:
             self._subs[submission_id] = sub
 
         # 组 workflow + 提交 ComfyUI (这一步同步等返回)
+        # v6: ref_images (list) 优先于 ref_image (单张)
+        effective_ref = ref_images if ref_images else ref_image
         workflow = build_h3_workflow(
             prompt_text, duration_s=duration_s, seed=seed,
-            width=width, height=height, ref_image=ref_image,
+            width=width, height=height, ref_image=effective_ref,
         )
         try:
             async with ComfyUIClient() as c:

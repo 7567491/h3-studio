@@ -121,8 +121,10 @@ class SubmitRequest(BaseModel):
     resolution: str = Field("480p", pattern="^(480p|720p|1080p)$")
     # 可选参考图 (无 = 纯文生视频)
     # 格式: "h3studio/<filename>" 或其他 subfolder/name 形式
+    # 单张: 字符串; 多张 (v6 REF hybrid): list[str] (1-9 张, REF 顺序 = 角色重要性)
     # 业务上应该是 /api/upload-ref 上传后返回的 subfolder/name
     ref_image: Optional[str] = Field(None, max_length=512)
+    ref_images: Optional[list[str]] = Field(None, max_length=9)
 
 
 class PassRequest(BaseModel):
@@ -642,6 +644,7 @@ async def api_submit(req: SubmitRequest, request: Request):
             width=width,
             height=height,
             ref_image=req.ref_image,
+            ref_images=req.ref_images,
             submitter=submitter,
         )
     except PermissionError as e:
@@ -1022,6 +1025,19 @@ async def api_history_delete(req: DeleteRequest, request: Request):
     # 风险: 写一半崩溃 → .meta.json 半截 JSON → 下次扫描 try/except 兜底读 meta={} 重建.
     # 实测 .meta.json 是 0666 权限, hermes 进程覆写没问题.
     meta_real.write_text(_json.dumps(meta, ensure_ascii=False, indent=2))
+
+    # === 防御性兜底 (2026-10-05 Jack RCA): ===
+    # 老 .meta.json 是 644 root:root 时, hermes 进程写 PermissionError → 500.
+    # 写完之后强制 chmod 666 + chown hermes:hermes, 让下次 hidden 也顺利.
+    # 用 sudo 桥接 (s3fs 上 hermes 不能直接 chmod root:root 文件).
+    try:
+        import subprocess as _sp
+        _sp.run(["sudo", "-n", "chmod", "666", str(meta_real)],
+                 check=False, capture_output=True, timeout=5)
+        _sp.run(["sudo", "-n", "chown", "hermes:hermes", str(meta_real)],
+                 check=False, capture_output=True, timeout=5)
+    except Exception:
+        pass  # 防御性: 修权限失败不阻断 hidden 主流程 (写入已完成)
 
     log.info(f"hidden: {req.filename} (upload_date={req.upload_date}, meta={meta_real})")
     return {

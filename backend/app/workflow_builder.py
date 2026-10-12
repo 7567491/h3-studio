@@ -3,7 +3,7 @@
 完全照搬 run_one.sh 已经在跑的模板,只是把 prompt 字段改成动态输入。
 有 ref_image 时变成 14 节点 (新增 LoadImage)。
 """
-from typing import Optional
+from typing import Optional, Union
 from .config import H3_DEFAULTS as D
 
 
@@ -14,7 +14,7 @@ def build_h3_workflow(
     seed: Optional[int] = None,
     width: Optional[int] = None,
     height: Optional[int] = None,
-    ref_image: Optional[str] = None,
+    ref_image: Optional[Union[str, list]] = None,  # str (单张) 或 list[str] (v6 多张, 1-9 张)
 ) -> dict:
     """构建 H3 Turbo workflow JSON (无 ref 13 节点, 有 ref 14 节点)。
 
@@ -52,20 +52,23 @@ def build_h3_workflow(
         import random
         seed = random.randint(0, 2**32 - 1)
 
-    # 节点 101 是 LoadImage (仅 ref_image != None 时创建)
-    # 节点 10 的 inputs["ref_images.ref_image_1"] = ["101", 0] 是点号键写法
+    # 节点 101-109 是 LoadImage (按 ref_images 数创建多个,每个不同 image)
+    # 节点 10 的 inputs["ref_images.ref_image_1" .. "ref_image_N"] = ["101..10N", 0]
     extra_nodes = {}
     ref_image_inputs = {}
     if ref_image:
-        load_node_id = "101"
-        extra_nodes[load_node_id] = {
-            "class_type": "LoadImage",
-            "inputs": {"image": ref_image},
-        }
-        ref_image_inputs = {
-            f"ref_images.ref_image_{i+1}": [load_node_id, 0]
-            for i in range(1)  # 第一版只支持 1 张, 后续可扩到 9
-        }
+        # 单字符串 → 单 ref, 列表 → 多 ref (v6 需要 3 张)
+        if isinstance(ref_image, str):
+            ref_images = [ref_image]
+        else:
+            ref_images = list(ref_image)
+        for i, img in enumerate(ref_images):
+            load_node_id = f"10{i+1}"  # 101, 102, 103 ...
+            extra_nodes[load_node_id] = {
+                "class_type": "LoadImage",
+                "inputs": {"image": img},
+            }
+            ref_image_inputs[f"ref_images.ref_image_{i+1}"] = [load_node_id, 0]
 
     return {
         "1": {"class_type": "UNETLoader",
