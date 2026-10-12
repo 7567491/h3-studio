@@ -61,7 +61,7 @@ export const en = {
     expanding: 'Expanding…',
     expandHintT2VA: 'Expand with H3 T2VA 3-section template — 5-10s',
     expandHintRef2VA: 'Expand with H3 Ref2VA 6-section template — 8-15s',
-    go: '🚀 Generate GO',
+    go: 'Generate GO',
     submitting: 'Submitting…',
     viewStructure: '📋 View prompt structure ▼',
     hideStructure: '▲ Hide prompt structure',
@@ -104,6 +104,11 @@ export const en = {
     playVideo: 'Play video',
     refBadge: '📌 ref',
     hideFailTitle: 'Hide video?',
+    loadMore: 'Load more ({{shown}} / {{total}})',
+    prevPage: 'Previous page',
+    nextPage: 'Next page',
+    scrollForMore: 'Scroll to load more',
+    moreOnNextPage: '{{left}} more on next page',
   },
 
   queue: {

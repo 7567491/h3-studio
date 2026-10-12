@@ -167,10 +167,10 @@ export const api = {
     }>('/api/expand-prompt', form as any, 'jack', true)
   },
 
-  // 历史
-  history: (limit = 50, date?: string) =>
+  // 历史 (支持分页 offset)
+  history: (limit = 50, date?: string, offset = 0) =>
     jget<{ count: number; items: HistoryItem[] }>(
-      `/api/history?limit=${limit}${date ? `&date=${date}` : ''}`
+      `/api/history?limit=${limit}${date ? `&date=${date}` : ''}${offset > 0 ? `&offset=${offset}` : ''}`
     ),
   historyDates: () => jget<{ dates: string[] }>('/api/history/dates'),
 

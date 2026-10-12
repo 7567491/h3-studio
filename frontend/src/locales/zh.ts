@@ -65,7 +65,7 @@ export const zh = {
     expanding: '扩写中…',
     expandHintT2VA: '使用 H3 T2VA 3 段模板扩写 — 5-10 秒',
     expandHintRef2VA: '使用 H3 Ref2VA 6 段模板扩写 — 8-15 秒',
-    go: '🚀 生成 GO',
+    go: '生成 GO',
     submitting: '提交中…',
     viewStructure: '📋 查看 prompt 详情 ▼',
     hideStructure: '收起 prompt 结构 ▲',
@@ -109,6 +109,11 @@ export const zh = {
     playVideo: '播放视频',
     refBadge: '📌 ref',
     hideFailTitle: '隐藏视频?',
+    loadMore: '加载更多 ({{shown}} / {{total}})',
+    prevPage: '上一页',
+    nextPage: '下一页',
+    scrollForMore: '滚到底加载更多',
+    moreOnNextPage: '下一页还有 {{left}} 个',
   },
 
   // === QueueTab

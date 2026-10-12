@@ -17,15 +17,68 @@ import { useT } from '../lib/i18n'
 export default function HistoryTab() {
   const { t } = useT()
   const [items, setItems] = useState<HistoryItem[]>([])
+  const [total, setTotal] = useState(0)        // 后端报告的总可见数
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-
-  const refresh = useEffect(() => {
-    api.history(60)
-      .then((r) => setItems(r.items))
+  const [offset, setOffset] = useState(0)       // 下一次拉取的起始 offset
+  const [hasMore, setHasMore] = useState(true)  // 是否还有更多
+  const [currentPage, setCurrentPage] = useState(0)  // 当前页 (0-based) — 直接用 offset 算, 不依赖 PAGE_SIZE
+  // 一页 20 个 (2026-10-12 Jack 反馈 "每页显示20个"):
+  // 之前 12 个, 现在 20. 20 = 4×5 (lg) 或 5×4, 缩略图网格美观.
+  // Jack 不要"更多"按钮, 但 20 个一页翻页次数从 94 减到 57 次.
+  const PAGE_SIZE = 20
+  // 翻页控件位置 (2026-10-12): Jack 反馈滚到底再点 Load more 体验差, 把控件移最顶
+  // 让用户先看到分页信息, 看完 10 个再决定加载更多. 底部只留一个 sentinel (无限滚动) 兜底.
+  //
+  // append=false (jumpToPage / 首次): 替换 items
+  // append=true  (Load more):     追加 items
+  const loadPage = (start: number, append: boolean) =>
+    api.history(PAGE_SIZE, undefined, start)
+      .then((r) => {
+        setItems(prev => append ? [...prev, ...r.items] : r.items)
+        setTotal(r.count)
+        // 用后端返回的 has_more 直接判断 (start + items.length < r.count 是后备)
+        setHasMore(r.has_more ?? ((start + r.items.length) < r.count))
+        // offset 累积: 基于实际返回的 items 数 (不是 PAGE_SIZE), 因为有 hidden 视频会少几个
+        const newOffset = start + r.items.length
+        setOffset(newOffset)
+        // currentPage = floor(offset / PAGE_SIZE), 用 offset 而非 items.length 算
+        // 例: offset=19 → page=0 (第1页), offset=38 → page=1 (第2页), ...
+        // 注意: 因为每页 items 数不固定 (受 hidden 影响), 这里用新 offset / PAGE_SIZE
+        setCurrentPage(Math.floor(newOffset / PAGE_SIZE))
+      })
       .catch((e) => setErr(e.message))
-      .finally(() => setLoading(false))
+
+  // 首次加载 (offset=0, replace)
+  useEffect(() => {
+    loadPage(0, false).finally(() => setLoading(false))
   }, [])
+
+  // "Load more" 追加
+  const loadMore = () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    loadPage(offset, true).finally(() => setLoadingMore(false))
+  }
+
+  // 跳到第 N 页 (从 0 开始)
+  const jumpToPage = (page: number) => {
+    if (loading || loadingMore) return
+    setLoading(true)
+    // 直接算 offset: 每页 20 个, page 0 = offset 0, page 1 = offset 20, ...
+    // (注意: 实际 items 可能不固定, 所以这里用 PAGE_SIZE * page 做近似值,
+    // 后端会根据 offset 返回对应范围的数据)
+    loadPage(page * PAGE_SIZE, false).finally(() => setLoading(false))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // 滚到底自动加载 (intersection observer) — 2026-10-12 Jack 反馈 "不要显示更多"
+  // 之前用 sentinel 自动追加, 现在 sentinel 留个"到底了"的占位但不再触发 loadMore.
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  // 移除自动加载 (2026-10-12): Jack 不要"更多", 滚到底不再追加.
+  // useEffect 留个空架子以免 lint 报 unused vars.
+  useEffect(() => { sentinelRef.current }, [])
 
   if (loading) {
     return (
@@ -49,30 +102,40 @@ export default function HistoryTab() {
 
   return (
     <div className="animate-slide-up">
-      <div className="flex items-center justify-between mb-3">
+      {/* === 顶部控件 (2026-10-12 Jack 反馈): 翻页信息/按钮放最顶 === */}
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold">{t('history.title')}</h2>
-          <p className="text-xs text-gray-500 mt-1">{items.length} {t('history.count')}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {items.length} / {total} {t('history.count')}
+          </p>
         </div>
-        {/*
-          完整画廊链接 — 默认隐藏 (clone 后用户自己配置 VITE_GALLERY_URL)。
-          生产部署时在 frontend/.env.local 或 nginx 反代时设 VITE_GALLERY_URL。
-        */}
+        {/* 翻页: 上一页 / 当前页 / 下一页 (Load more 已移除 2026-10-12) */}
+        {total > 0 && (
+          <PaginationControl
+            shown={items.length}
+            total={total}
+            pageSize={PAGE_SIZE}
+            currentPage={currentPage}
+            hasMore={hasMore}
+            onJump={jumpToPage}
+          />
+        )}
         {import.meta.env.VITE_GALLERY_URL ? (
           <a
             href={String(import.meta.env.VITE_GALLERY_URL)}
             target="_blank"
             rel="noopener"
-            className="text-xs text-gray-500 hover:text-accent transition whitespace-nowrap flex flex-col items-end leading-tight"
+            className="text-xs text-gray-500 hover:text-accent transition whitespace-nowrap"
           >
-            <span>{t('history.fullGallery')}</span>
+            {t('history.fullGallery')}
           </a>
         ) : null}
       </div>
 
-      {/* 视频 grid - 自适应列数 */}
-      {/* 手机默认 2 列,sm 以上 3 列,lg 以上 4 列 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+      {/* 视频 grid - 自适应列数 + 缩略图 (2026-10-12) */}
+      {/* 手机默认 2 列,sm 以上 3 列,lg 以上 4 列 → 5 列等比放大 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {items.map(v => (
           <VideoCard
             // 用 web_path 做 React key (含日期子目录), 不用 slug
@@ -81,12 +144,28 @@ export default function HistoryTab() {
             key={v.web_path}
             v={v}
             onDeleted={(slug) => {
-              // 从本地 list 立即移除 (无需等下一次 refresh)
               setItems(prev => prev.filter(it => it.slug !== slug))
+              setTotal(t => Math.max(0, t - 1))
             }}
           />
         ))}
       </div>
+
+      {/* Load more 按钮已移除 (2026-10-12 Jack 反馈 "不要显示更多") */}
+      {hasMore && !loadingMore && (
+        <div className="text-center text-xs text-gray-600 py-4">
+          — {t('history.moreOnNextPage', { left: total - items.length })} —
+        </div>
+      )}
+      {loadingMore && (
+        <div className="text-center text-xs text-gray-500 py-4">{t('common.loading')}</div>
+      )}
+
+      {!hasMore && items.length > 0 && (
+        <div className="text-center text-xs text-gray-600 py-6">
+          — {items.length} / {total} {t('history.count')} —
+        </div>
+      )}
 
       {items.length === 0 && (
         <div className="text-center text-gray-500 py-12">
@@ -99,11 +178,71 @@ export default function HistoryTab() {
 }
 
 /**
- * 单个视频卡片 — inline 自动循环播放 (mobile-first)
- * - 移动端:直接显示 <video autoplay loop muted> 循环预览,无需点击
- * - PC 端:相同行为 (一致体验)
- * - 点击 → 弹 modal 大预览 + 下载按钮 (避免跳新窗口)
- * - cover.jpg 仅作 poster (视频加载前的占位图)
+ * 翻页控件 — 2026-10-12 Jack 反馈后移最顶
+ * 布局: ‹  [prev] page X / N [next] ›   |   Load more (shown/total)
+ *
+ *  - "跳页" 模式: 清空当前 items 重新拉, 用户想看第 30 页就直接点
+ *  - "Load more" 模式: 追加, 不清空
+ *
+ * 渲染规则:
+ *  - 总数 <= PAGE_SIZE*2: 只显示 "Load more" 一个按钮
+ *  - 总数 > PAGE_SIZE*2: 显示 ‹ prev / next › + "Load more"
+ *    - 数字页码只在总数 <= PAGE_SIZE*10 时显示 (1130/10=113, 不显示具体页码,
+ *      改用 ‹ 1/113 › 简写)
+ */
+function PaginationControl({
+  shown, total, pageSize, currentPage, hasMore, onJump,
+}: {
+  shown: number
+  total: number
+  pageSize: number
+  currentPage: number
+  hasMore: boolean
+  onJump: (page: number) => void
+}) {
+  const { t } = useT()
+  // currentPage 由父组件传入 (基于 offset 算), 不依赖 shown.length (hidden 的不算)
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {/* 跳页箭头 (总数 > 1 页时才显示) */}
+      {(() => {
+        const totalPages = Math.max(1, Math.ceil(total / pageSize))
+        return totalPages > 1 && (
+          <div className="flex items-center gap-0.5 text-xs">
+            <button
+              disabled={currentPage === 0}
+              onClick={() => onJump(currentPage - 1)}
+              className="w-7 h-7 rounded-full bg-bg-card hover:bg-bg-hover border border-gray-700 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              title={t('history.prevPage')}
+            >
+              ‹
+            </button>
+            <span className="text-gray-500 px-1 font-mono">
+              {currentPage + 1} / {totalPages}
+            </span>
+            <button
+              disabled={!hasMore}
+              onClick={() => onJump(currentPage + 1)}
+              className="w-7 h-7 rounded-full bg-bg-card hover:bg-bg-hover border border-gray-700 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              title={t('history.nextPage')}
+            >
+              ›
+            </button>
+          </div>
+        )
+      })()}
+      {/* Load more 按钮已移除 (2026-10-12 Jack 反馈 "不要显示更多") */}
+    </div>
+  )
+}
+
+/**
+ * 单个视频卡片 — 缩略图模式 (2026-10-12 Jack 反馈优化)
+ * - 默认: 只显示 cover.jpg (17KB/张), hover 才加载 video
+ *   避免 1100+ <video autoPlay> 同时请求 mp4 metadata
+ * - 点击 → 弹 modal 大预览 (跟之前一样)
+ * - cover.jpg 路径: web_path + ".cover.jpg"
+ *   1122 个视频都已生成 cover.jpg (submit_manager 在提交后用 ffmpeg 抽第一帧)
  */
 function VideoCard({ v, onDeleted }: { v: HistoryItem; onDeleted: (slug: string) => void }) {
   const { t } = useT()
@@ -111,6 +250,8 @@ function VideoCard({ v, onDeleted }: { v: HistoryItem; onDeleted: (slug: string)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteErr, setDeleteErr] = useState<string | null>(null)
+  // hover 时才加载 video (preload=none → cover.jpg 立即显示, 视频按需)
+  const [hovered, setHovered] = useState(false)
 
   const doDelete = async () => {
     setDeleting(true)
@@ -133,19 +274,38 @@ function VideoCard({ v, onDeleted }: { v: HistoryItem; onDeleted: (slug: string)
       <div
         className="block w-full text-left group bg-bg-card rounded-lg overflow-hidden hover:bg-bg-hover transition cursor-pointer relative"
         onClick={() => setModalOpen(true)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        {/* 视频预览区 — 16:9 自动循环 (inline, 无需点击) */}
+        {/* 缩略图区 — 16:9, 默认显示 cover.jpg (17KB), hover 才加载 video */}
         <div className="relative aspect-video bg-black overflow-hidden">
-          <video
-            src={v.web_path}
-            muted
-            loop
-            autoPlay
-            playsInline
-            preload="metadata"
-            poster={`${v.web_path}.cover.jpg`}
-            className="w-full h-full object-cover"
+          {/* 缩略图: cover.jpg, lazy load (loading="lazy" 让浏览器自动控制) */}
+          <img
+            src={`${v.web_path}.cover.jpg`}
+            alt={v.title}
+            loading="lazy"
+            decoding="async"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity ${
+              hovered ? 'opacity-0' : 'opacity-100'
+            }`}
+            draggable={false}
+            onError={(e) => {
+              // cover.jpg 不存在 (老视频) → fallback 显示 video 第一帧 (默认行为)
+              (e.currentTarget as HTMLImageElement).style.display = 'none'
+            }}
           />
+          {/* 视频预览: 仅 hover 时才插入 (preload="auto" 让 hover 立即有反馈) */}
+          {hovered && (
+            <video
+              src={v.web_path}
+              muted
+              loop
+              autoPlay
+              playsInline
+              preload="auto"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
           {/* 参考图标记: 用过 ref_image 的视频在右上角显示 📌 */}
           {v.meta?.ref_image && (
             <span
