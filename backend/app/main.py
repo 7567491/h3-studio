@@ -32,7 +32,7 @@ from .comfyui_client import ComfyUIClient, ComfyUIError
 from .prompt_library import search_prompts, get_prompt, list_categories, total_count
 from .expand_prompt import expand_prompt as do_expand_prompt
 from .submit_manager import manager as submit_mgr, SubmitManager as _SubmitManagerT
-from .history_scanner import scan_local_uploads, list_upload_dates, get_comfy_history
+from .history_scanner import scan_local_uploads, list_upload_dates, get_comfy_history, total_visible_count
 from .orphan_recovery import recover_orphans
 
 logging.basicConfig(
@@ -670,11 +670,16 @@ async def api_submission_detail(submission_id: str):
 # ========================================================== 历史
 
 @app.get("/api/history")
-async def api_history(limit: int = Query(50, ge=1, le=2000), date: Optional[str] = None):
+async def api_history(limit: int = Query(50, ge=1, le=2000), date: Optional[str] = None, offset: int = Query(0, ge=0)):
     # 上限从 200 放宽到 2000 (2026-09-06 Jack RCA): 之前 limit>200 直接 422,
     # 前端如果误传大 limit 拿不到任何数据. 内部按 slug 去重, 大 limit 只是空跑.
-    items = scan_local_uploads(limit=limit, date=date)
-    return {"count": len(items), "items": items}
+    # offset (2026-10-12): 支持翻页, 跳过前 offset 个
+    items = scan_local_uploads(limit=limit, date=date, offset=offset)
+    # has_more: 当返回 items 数 < 已知总数 - offset 时为 True
+    # (不能用 len(items) == limit 判定, 因为可能有 soft-deleted 隐藏掉)
+    known_total = total_visible_count(date=date)
+    has_more = (offset + len(items)) < known_total
+    return {"count": known_total, "items": items, "offset": offset, "has_more": has_more}
 
 
 @app.get("/api/history/dates")

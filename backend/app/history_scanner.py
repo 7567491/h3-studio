@@ -5,6 +5,7 @@
 import glob
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Optional
@@ -49,7 +50,7 @@ def _describe_mp4(mp4, date: str, st=None) -> dict | None:
     }
 
 
-def scan_local_uploads(limit: int = 50, date: Optional[str] = None) -> list[dict]:
+def scan_local_uploads(limit: int = 50, date: Optional[str] = None, offset: int = 0) -> list[dict]:
     """扫 H3_UPLOADS_DIR/<日期>/*.mp4。
 
     H3_UPLOADS_DIR 从 backend/.env 读 (默认 ./uploads)。
@@ -58,6 +59,7 @@ def scan_local_uploads(limit: int = 50, date: Optional[str] = None) -> list[dict
     Args:
         limit: 最多返回多少个
         date: 指定日期子目录 → 只扫该目录;None = 聚合所有日期目录,按 mtime 倒序
+        offset (2026-10-12): 跳过前 offset 个, 支持前端翻页
 
     历史 bug (2026-08-28 修): 原实现默认只看"今天"的目录,今天目录还没建时
     fallback 用字符串排序取"最新"目录,结果 'v6-round3' (0 个 mp4) 排在
@@ -66,13 +68,16 @@ def scan_local_uploads(limit: int = 50, date: Optional[str] = None) -> list[dict
 
     性能 (s3fs): 目录里 637 个 mp4 / 414 个 meta.json,全量读 meta 要 20-45s。
     所以先只 stat + 排序,截到 limit 之后才读那 limit 个的 meta.json → ~1-3s。
+
+    翻页语义 (2026-10-12): offset=0 返回前 limit 个; offset=limit 返回
+    接下来的 limit 个. count (去重后总数) 独立计算, 跟 limit/offset 无关.
     """
     if not H3_UPLOADS_DIR.exists():
         log.warning(f"uploads 目录不存在: {H3_UPLOADS_DIR}")
         return []
 
     # 收集 (mtime, path, date) —— 只 stat,不碰 meta.json
-    entries: list[tuple[float, object, str, object]] = []
+    entries: list[tuple[float, Path, str, os.stat_result]] = []
     if date is not None:
         # 显式指定日期 → 只扫那一个目录(供日期筛选用)
         date_dir = H3_UPLOADS_DIR / date
@@ -96,18 +101,75 @@ def scan_local_uploads(limit: int = 50, date: Optional[str] = None) -> list[dict
     # 跨日期子目录去重 (2026-09-06 Jack RCA): orphan_recovery 9-04 那天把
     # 9-03 的 56 个孤儿复制到 9-04/9-05 目录, MD5 完全相同但 slug 重复.
     # 按 mtime 倒序后, 第一次见到的 slug 就是最新的 (其他是旧副本).
-    seen_slugs: set[str] = set()
+    #
+    # 2026-10-12 Jack RCA: 之前用 slug 单独去重, 但 ComfyUI 节点 SaveVideo
+    # filename_prefix="H3_studio" + 自动编号 → ComfyUI 每次重启都从 00001
+    # 开始. 不同时段 (8-27 vs 9-18 vs 10-12) 都会有 H3_studio_00001_.mp4,
+    # 但其实是完全不同的视频. 旧逻辑把它们当 1 条去重, 977 个真实文件被遮蔽.
+    #
+    # 修复: 去重 key 改成 (slug, upload_date) 复合键.
+    #   - 同日期同 slug (orphan 复制): 算重复, 保留最新 mtime 那个
+    #   - 不同日期同 slug (ComfyUI 重启): 不算重复, 各自保留
+    #
+    # 翻页 (2026-10-12): 先全量去重得到 ordered_unique 列表, 再 offset+limit 切片.
+    # 不用 entries[:limit] 否则 offset=60 时返回的还是前 60 个最旧的, 不对.
+    seen_keys: set[tuple[str, str]] = set()
+    unique_ordered: list[tuple[Path, str, os.stat_result]] = []
+    for _, mp4, dname, st in entries:
+        slug = mp4.stem
+        key = (slug, dname)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        unique_ordered.append((mp4, dname, st))
+
+    # offset + limit 切片 (基于去重后的列表)
+    page = unique_ordered[offset:offset + limit]
     out = []
-    for _, mp4, dname, st in entries[:limit]:
+    for mp4, dname, st in page:
         item = _describe_mp4(mp4, dname, st)
         if item is None:  # 软删除 (hidden=true) 跳过
             continue
-        if item["slug"] in seen_slugs:
-            log.debug(f"dup slug skipped: {item['slug']} in {dname}")
-            continue
-        seen_slugs.add(item["slug"])
         out.append(item)
     return out
+
+
+def total_visible_count(date: Optional[str] = None) -> int:
+    """统计去重后 + 软删除过滤后的可见视频总数 (前端翻页用)。
+
+    与 scan_local_uploads 用同样的去重规则, 但只数 count, 不构造 dict,
+    不读 meta.json (避免 s3fs 慢 IO)。
+
+    性能: 单次 stat 1100+ 文件, s3fs 上 ~5-10s. 仍在 cache TTL 60s 内.
+    """
+    if not H3_UPLOADS_DIR.exists():
+        return 0
+
+    if date is not None:
+        date_dir = H3_UPLOADS_DIR / date
+        if not date_dir.exists():
+            return 0
+        dirs = [date_dir]
+    else:
+        dirs = [d for d in H3_UPLOADS_DIR.iterdir() if d.is_dir()]
+
+    seen_keys: set[tuple[str, str]] = set()
+    for d in dirs:
+        for mp4 in d.glob("*.mp4"):
+            try:
+                st = mp4.stat()
+            except OSError:
+                continue
+            slug = mp4.stem
+            key = (slug, d.name)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+
+    # 注: 这里不算 hidden 软删除 (s3fs 上读 meta.json 太慢).
+    # 软删除过滤只在 scan_local_uploads 实际返回 items 时做.
+    # count 可能略偏高 (含 hidden 的), 但前端 has_more 看 len(items)==limit 即可.
+    return len(seen_keys)
 
 
 def list_upload_dates() -> list[str]:
