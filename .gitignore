@@ -76,3 +76,8 @@ nohup.out
 华强北之狼*
 Wall_Street_of_HuaQiangBei*
 电影改编经验.md
+
+# === BeatAPI prompt 库 (2026-10-12 持久化, 3.9MB / 550 个 json, 从 GitHub 拉) ===
+# 跟 backend/.env 同理由: 外部数据, 不应进 git
+# 重建方式: 见 backend/.env 里 PROMPT_LIBRARY_DIR 路径, 或 cron
+/data/prompts/

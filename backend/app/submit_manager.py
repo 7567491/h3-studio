@@ -459,14 +459,25 @@ class SubmitManager:
                 capture_output=True, text=True, timeout=15,
             )
             if cover_res.returncode == 0 and cover_tmp.exists():
-                sp.run(
-                    ["sudo", "-n", "cp", str(cover_tmp), str(target) + ".cover.jpg"],
-                    check=False, timeout=10,
-                )
-                sp.run(
-                    ["sudo", "-n", "chmod", "644", str(target) + ".cover.jpg"],
-                    check=False, timeout=5,
-                )
+                # 2026-10-12 改: 不吞错. 之前 sp.run(check=False) 让 cp/chmod 失败被
+                # 静默忽略, 导致 mp4 落盘但 cover 缺失 (10-12 那 6 个就是这种 case).
+                # 现在 check=True 让失败 raise, 落到外层 except 记 error log.
+                # 重试一次是 s3fs 的常见偶发 (sync 慢, cp 后立刻 chmod 可能 race).
+                for attempt in (1, 2):
+                    try:
+                        sp.run(
+                            ["sudo", "-n", "cp", str(cover_tmp), str(target) + ".cover.jpg"],
+                            check=True, timeout=10,
+                        )
+                        sp.run(
+                            ["sudo", "-n", "chmod", "644", str(target) + ".cover.jpg"],
+                            check=True, timeout=5,
+                        )
+                        break
+                    except (sp.CalledProcessError, sp.TimeoutExpired) as e:
+                        if attempt == 2:
+                            raise  # 第二次还失败 → 抛给外层
+                        log.warning(f"cover cp/chmod 失败 (attempt {attempt}), 重试: {e}")
                 cover_tmp.unlink(missing_ok=True)
                 log.info(f"cover.jpg written: {target}.cover.jpg")
             else:
